@@ -68,6 +68,15 @@ Exit status is `0` when every walked error path is resource-clean, `1` when the
 observed cases contain leaks or bad releases, and `2` when the walker, baseline
 run, `p101-observe`, or one of the helper analyzers failed.
 
+## Boundaries
+
+`p101-error-path-walk` can only inject failures at p101 wrapper calls that
+participate in the `lib_env` fault mechanism. It does not force failures in
+direct libc calls, third-party libraries, or code paths that never run under the
+chosen command. A clean walk is evidence that the exercised p101-visible error
+paths were resource-clean; it is not proof that every possible error path in the
+program is correct.
+
 ## Build and check
 
 Configure a compiler once, then run the gate:
