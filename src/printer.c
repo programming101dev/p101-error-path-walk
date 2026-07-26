@@ -43,7 +43,14 @@ void p101_error_path_walk_print_run_result(const struct p101_env *env, struct p1
 
     if(result->resource_log_present && result->resources.parsed)
     {
-        p101_printf(env, err, " resources(records=%zu fd_leaks=%zu allocation_leaks=%zu bad_releases=%zu)", result->resources.records, result->resources.fd_leaks, result->resources.allocation_leaks, result->resources.bad_releases);
+        p101_printf(env,
+                    err,
+                    " resources(records=%zu fd_leaks=%zu allocation_leaks=%zu bad_releases=%zu exec_inheritances=%zu)",
+                    result->resources.records,
+                    result->resources.fd_leaks,
+                    result->resources.allocation_leaks,
+                    result->resources.bad_releases,
+                    result->resources.exec_inheritances);
     }
     else
     {

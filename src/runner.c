@@ -28,14 +28,15 @@ struct fault_group
     size_t findings;
 };
 
-static int  run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result);
-static int  run_p101_observe(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result);
-static void update_fault_group(const struct p101_env *env, struct p101_error *err, struct fault_group groups[FAULT_GROUP_LIMIT], size_t *group_count, const struct run_result *result);
-static void print_fault_groups(const struct p101_env *env, struct p101_error *err, const struct fault_group groups[FAULT_GROUP_LIMIT], size_t group_count);
-static bool observe_status_is_acceptable(int status);
-static void clear_fault_environment(const struct p101_env *env, struct p101_error *err);
-static void reset_run_environment(const struct p101_env *env, struct p101_error *err);
-static void flush_standard_streams(const struct p101_env *env, struct p101_error *err);
+static int    run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result);
+static int    run_p101_observe(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result);
+static void   update_fault_group(const struct p101_env *env, struct p101_error *err, struct fault_group groups[FAULT_GROUP_LIMIT], size_t *group_count, const struct run_result *result);
+static void   print_fault_groups(const struct p101_env *env, struct p101_error *err, const struct fault_group groups[FAULT_GROUP_LIMIT], size_t group_count);
+static size_t resource_finding_count(const struct run_result *result);
+static bool   observe_status_is_acceptable(int status);
+static void   clear_fault_environment(const struct p101_env *env, struct p101_error *err);
+static void   reset_run_environment(const struct p101_env *env, struct p101_error *err);
+static void   flush_standard_streams(const struct p101_env *env, struct p101_error *err);
 
 int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err, const struct arguments *args)
 {
@@ -63,12 +64,12 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
     runs++;
     p101_error_path_walk_print_run_result(env, err, &result);
 
-    if((int)result.observe_ok == 0 || (!p101_error_path_walk_status_is_success(result.status) && (result.resources.fd_leaks + result.resources.allocation_leaks + result.resources.bad_releases) == 0U))
+    if((int)result.observe_ok == 0 || (!p101_error_path_walk_status_is_success(result.status) && resource_finding_count(&result) == 0U))
     {
         trouble = true;
     }
 
-    resource_findings += result.resources.fd_leaks + result.resources.allocation_leaks + result.resources.bad_releases;
+    resource_findings += resource_finding_count(&result);
 
     for(index = 1; index <= args->max_failures && p101_error_has_no_error(err); index++)
     {
@@ -92,7 +93,7 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
             break;
         }
 
-        resource_findings += result.resources.fd_leaks + result.resources.allocation_leaks + result.resources.bad_releases;
+        resource_findings += resource_finding_count(&result);
         update_fault_group(env, err, groups, &group_count, &result);
     }
 
@@ -127,7 +128,7 @@ static void update_fault_group(const struct p101_env *env, struct p101_error *er
     }
 
     name     = (result->fault_name[0] == '\0') ? "?" : result->fault_name;
-    findings = result->resources.fd_leaks + result->resources.allocation_leaks + result->resources.bad_releases;
+    findings = resource_finding_count(result);
     index    = *group_count;
 
     for(size_t i = 0; i < *group_count; i++)
@@ -174,6 +175,11 @@ static void print_fault_groups(const struct p101_env *env, struct p101_error *er
 
 done:
     return;
+}
+
+static size_t resource_finding_count(const struct run_result *result)
+{
+    return result->resources.fd_leaks + result->resources.allocation_leaks + result->resources.bad_releases + result->resources.exec_inheritances;
 }
 
 static int run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result)

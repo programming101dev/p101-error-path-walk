@@ -58,13 +58,19 @@ static bool parse_resource_summary(const struct p101_env *env, const char *text,
     bool fd_leaks_parsed;
     bool allocation_leaks_parsed;
     bool bad_releases_parsed;
+    bool exec_inheritances_parsed;
 
-    records_parsed          = parse_json_size(env, text, JSON_RECORDS, &summary->records);
-    fd_leaks_parsed         = parse_json_size(env, text, JSON_FD_LEAKS, &summary->fd_leaks);
-    allocation_leaks_parsed = parse_json_size(env, text, JSON_ALLOCATION_LEAKS, &summary->allocation_leaks);
-    bad_releases_parsed     = parse_json_size(env, text, JSON_BAD_RELEASES, &summary->bad_releases);
-    parsed                  = (records_parsed && fd_leaks_parsed && allocation_leaks_parsed && bad_releases_parsed) != 0;
-    summary->parsed         = parsed;
+    records_parsed           = parse_json_size(env, text, JSON_RECORDS, &summary->records);
+    fd_leaks_parsed          = parse_json_size(env, text, JSON_FD_LEAKS, &summary->fd_leaks);
+    allocation_leaks_parsed  = parse_json_size(env, text, JSON_ALLOCATION_LEAKS, &summary->allocation_leaks);
+    bad_releases_parsed      = parse_json_size(env, text, JSON_BAD_RELEASES, &summary->bad_releases);
+    exec_inheritances_parsed = parse_json_size(env, text, JSON_EXEC_INHERITANCES, &summary->exec_inheritances);
+    if(!exec_inheritances_parsed)
+    {
+        summary->exec_inheritances = 0U;
+    }
+    parsed          = (records_parsed && fd_leaks_parsed && allocation_leaks_parsed && bad_releases_parsed) != 0;
+    summary->parsed = parsed;
 
     return parsed;
 }

@@ -22,6 +22,7 @@
 #define JSON_FD_LEAKS "\"fd_leaks\""
 #define JSON_ALLOCATION_LEAKS "\"allocation_leaks\""
 #define JSON_BAD_RELEASES "\"bad_releases\""
+#define JSON_EXEC_INHERITANCES "\"exec_inheritances\""
 
 enum
 {
@@ -31,6 +32,7 @@ enum
     TRACKER_OUTPUT_LIMIT = 65536,
     EXEC_FAILURE         = 127,
     DEFAULT_MAX_FAILURES = 1024,
+    MAX_FAILURES_LIMIT   = 100000,
     JSON_NUMBER_BASE     = 10,
     MAX_TOOL_ARGS        = 128,
     EXIT_FINDINGS        = 1,

@@ -187,6 +187,15 @@ void p101_error_path_walk_convert_arguments(const struct p101_env *env, struct p
             P101_ERROR_RAISE_USER(err, "The failure count must be an unsigned integer.", ERR_USAGE);
             goto done;
         }
+
+        if(args->max_failures > MAX_FAILURES_LIMIT)
+        {
+            char msg[MSG_LEN];
+
+            p101_snprintf(env, err, msg, sizeof(msg), "The failure count must be at most %u.", (unsigned)MAX_FAILURES_LIMIT);
+            P101_ERROR_RAISE_USER(err, msg, ERR_USAGE);
+            goto done;
+        }
     }
 
     if(args->fault_errno_str != NULL)

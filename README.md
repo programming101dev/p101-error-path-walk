@@ -20,6 +20,11 @@ The intent is to exercise error paths mechanically:
 The final output also groups faulted runs by wrapper name, so repeated failures
 at the same kind of call site are easier to discuss.
 
+For the security-course framing, see
+[`docs/security-error-paths.md`](docs/security-error-paths.md). The short version:
+error paths are where many C vulnerability shapes live, and this tool makes
+those paths run mechanically.
+
 This tool controls the child process environment. Programs that create their
 usual `struct p101_env` with the updated `lib_env` automatically pick up
 `P101_FAULT_CALL`, `P101_RESOURCE_LOG`, and `P101_CALL_LOG`.
