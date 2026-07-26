@@ -43,7 +43,7 @@ Options:
 Example:
 
 ```sh
-p101-error-path-walk -r ../p101-resource-tracker/build-clang/main -- ./my-p101-program config.txt
+p101-error-path-walk -r ../p101-resource-tracker/build-clang/p101-resource-tracker -- ./my-p101-program config.txt
 p101-error-path-walk -F open -E 24 -l /tmp/my-run -- ./my-p101-program config.txt
 ```
 
