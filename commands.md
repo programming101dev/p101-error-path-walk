@@ -27,10 +27,12 @@ Program examples:
 | --- | --- |
 | `p101-error-path-walk -- ./prog` | Run `./prog` normally, then walk fault injections until no fault fires |
 | `p101-error-path-walk -n 0 -- ./prog` | Baseline only |
-| `p101-error-path-walk -n 20 -l /tmp/run -- ./prog config.txt` | Run baseline plus fault calls up to 20 using `/tmp/run-*` logs |
+| `p101-error-path-walk -n 20 -l /tmp/run -- ./prog config.txt` | Run baseline plus fault calls up to 20 using `/tmp/run-*` observe directories |
 | `p101-error-path-walk -F open -- ./prog config.txt` | Walk only fault-capable calls named `open` |
 | `p101-error-path-walk -E 24 -- ./prog config.txt` | Inject errno `24` instead of the default `EIO` |
+| `p101-error-path-walk -O ../p101-observe/build-clang/p101-observe -- ./prog` | Use an in-tree p101-observe build |
 | `p101-error-path-walk -r ../p101-resource-tracker/build-clang/p101-resource-tracker -- ./prog` | Use an in-tree p101-resource-tracker build |
+| `p101-error-path-walk -t ../p101-trace/build-clang/p101-trace -- ./prog` | Use an in-tree p101-trace build |
 | `p101-error-path-walk -p ../p101-report/build-clang/p101-report -- ./prog` | Use an in-tree p101-report build |
 
 Less common: `./build-all.sh` (build with every compiler), `./check-compilers.sh`
