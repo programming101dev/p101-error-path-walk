@@ -65,7 +65,7 @@ static const char FAULT_ERRNO_ENV[]       = "P101_FAULT_ERRNO";
 static const char FAULT_LOG_ENV[]         = "P101_FAULT_LOG";
 static const char FAULT_NAME_ENV[]        = "P101_FAULT_NAME";
 static const char RESOURCE_LOG_ENV[]      = "P101_RESOURCE_LOG";
-static const char DEFAULT_TRACKER_PATH[]  = "resource-tracker";
+static const char DEFAULT_TRACKER_PATH[]  = "p101-resource-tracker";
 static const char DEFAULT_LOG_PREFIX[]    = "/tmp/p101-error-path-walk";
 static const char JSON_RECORDS[]          = "\"records\"";
 static const char JSON_FD_LEAKS[]         = "\"fd_leaks\"";
@@ -256,7 +256,7 @@ static void check_arguments(const struct p101_env *env, struct p101_error *err, 
 
     if(args->resource_tracker == NULL || args->resource_tracker[0] == '\0')
     {
-        P101_ERROR_RAISE_USER(err, "The resource-tracker path must not be empty.", ERR_USAGE);
+        P101_ERROR_RAISE_USER(err, "The p101-resource-tracker path must not be empty.", ERR_USAGE);
         goto done;
     }
 
@@ -873,14 +873,14 @@ _Noreturn static void usage(const struct p101_env *env, struct p101_error *err, 
         p101_fprintf(env, err, stderr, "%s\n\n", message);
     }
 
-    p101_fprintf(env, err, stderr, "Usage: %s [-h] [-v] [-n <count>] [-l <prefix>] [-r <resource-tracker>] [-E <errno>] [-F <name>] -- <command> [args...]\n", program_name);
+    p101_fprintf(env, err, stderr, "Usage: %s [-h] [-v] [-n <count>] [-l <prefix>] [-r <p101-resource-tracker>] [-E <errno>] [-F <name>] -- <command> [args...]\n", program_name);
     p101_fputs(env, err, "Options:\n", stderr);
     p101_fputs(env, err, "  -h                      Display this help message and exit\n", stderr);
     p101_fputs(env, err, "  -v                      Enable verbose p101 tracing in the walker\n", stderr);
     p101_fputs(env, err, "  -n <count>              Maximum injected failures to try after the baseline\n", stderr);
     p101_fputs(env, err, "                          (default: 1024, stops early when no fault fires)\n", stderr);
     p101_fputs(env, err, "  -l <prefix>             Prefix for per-run resource/fault logs\n", stderr);
-    p101_fputs(env, err, "  -r <resource-tracker>   resource-tracker executable (default: PATH lookup)\n", stderr);
+    p101_fputs(env, err, "  -r <p101-resource-tracker>   p101-resource-tracker executable (default: PATH lookup)\n", stderr);
     p101_fputs(env, err, "  -E <errno>              errno injected by failed wrappers (default: EIO)\n", stderr);
     p101_fputs(env, err, "  -F <name>               Only count/fail matching wrapper names, e.g. open\n", stderr);
     p101_fputs(env, err, "\nThe child must use p101_env_create() from an updated lib_env build.\n", stderr);

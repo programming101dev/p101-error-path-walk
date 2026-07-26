@@ -37,7 +37,7 @@ static void reset_getopt(void)
 
 static void test_parse_accepts_command_after_options(void)
 {
-    char            *argv[] = {"p101-error-path-walk", "-n", "3", "-l", "walk", "-r", "resource-tracker", "-E", "12", "-F", "open", "--", "prog", "arg", NULL};
+    char            *argv[] = {"p101-error-path-walk", "-n", "3", "-l", "walk", "-r", "p101-resource-tracker", "-E", "12", "-F", "open", "--", "prog", "arg", NULL};
     struct arguments args;
 
     reset_getopt();
@@ -54,7 +54,7 @@ static void test_parse_accepts_command_after_options(void)
     TEST_ASSERT_EQUAL_UINT(3U, args.max_failures);
     TEST_ASSERT_EQUAL_INT(12, args.fault_errno);
     TEST_ASSERT_EQUAL_STRING("walk", args.log_prefix);
-    TEST_ASSERT_EQUAL_STRING("resource-tracker", args.resource_tracker);
+    TEST_ASSERT_EQUAL_STRING("p101-resource-tracker", args.resource_tracker);
     TEST_ASSERT_EQUAL_STRING("open", args.fault_name);
     TEST_ASSERT_EQUAL_STRING("prog", args.command_argv[0]);
     TEST_ASSERT_EQUAL_STRING("arg", args.command_argv[1]);
