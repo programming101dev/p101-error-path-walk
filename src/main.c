@@ -699,7 +699,12 @@ static int run_p101_report(const struct p101_env *env, struct p101_error *err, c
         p101_strncpy(env, call_log_path, result->call_log_path, sizeof(call_log_path) - 1U);
         call_log_path[sizeof(call_log_path) - 1U] = '\0';
 
-        (void)p101_freopen(env, err, result->report_path, "w", stdout);
+        if(p101_freopen(env, err, result->report_path, "w", stdout) == NULL || p101_error_has_error(err))
+        {
+            p101_fprintf(env, err, stderr, "p101-error-path-walk: report setup failed: %s\n", p101_error_get_message(err));
+            p101__exit(env, EXEC_FAILURE);
+        }
+
         reset_run_environment(env, err);
 
         if(p101_error_has_error(err))
@@ -937,7 +942,7 @@ static bool parse_json_size(const struct p101_env *env, const char *text, const 
         goto done;
     }
 
-    *value = (size_t)parsed;
+    *value = parsed;
     ok     = true;
 
 done:
