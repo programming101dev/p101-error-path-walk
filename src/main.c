@@ -62,6 +62,7 @@ static void           print_run_result(const struct p101_env *env, struct p101_e
 static void           print_status_text(const struct p101_env *env, struct p101_error *err, int status);
 static void           clear_fault_environment(const struct p101_env *env, struct p101_error *err);
 static void           reset_run_environment(const struct p101_env *env, struct p101_error *err);
+static void           flush_standard_streams(const struct p101_env *env, struct p101_error *err);
 _Noreturn static void usage(const struct p101_env *env, struct p101_error *err, const char *program_name, int exit_code, const char *message);
 
 static const char FAULT_CALL_ENV[]        = "P101_FAULT_CALL";
@@ -513,7 +514,14 @@ static int run_child(const struct p101_env *env, struct p101_error *err, const s
 
     P101_TRACE(env);
     status = 0;
-    pid    = p101_fork(env, err);
+    flush_standard_streams(env, err);
+
+    if(p101_error_has_error(err))
+    {
+        goto done;
+    }
+
+    pid = p101_fork(env, err);
 
     if(p101_error_has_error(err))
     {
@@ -554,6 +562,13 @@ static int run_resource_tracker(const struct p101_env *env, struct p101_error *e
     ret_val     = EXIT_TROUBLE;
 
     if(p101_pipe(env, err, pipe_fds) == -1)
+    {
+        goto done;
+    }
+
+    flush_standard_streams(env, err);
+
+    if(p101_error_has_error(err))
     {
         goto done;
     }
@@ -655,7 +670,14 @@ static int run_p101_report(const struct p101_env *env, struct p101_error *err, c
     P101_TRACE(env);
     status  = 0;
     ret_val = EXIT_TROUBLE;
-    pid     = p101_fork(env, err);
+    flush_standard_streams(env, err);
+
+    if(p101_error_has_error(err))
+    {
+        goto done;
+    }
+
+    pid = p101_fork(env, err);
 
     if(p101_error_has_error(err))
     {
@@ -1003,6 +1025,17 @@ static void reset_run_environment(const struct p101_env *env, struct p101_error 
     P101_TRACE(env);
     clear_fault_environment(env, err);
     p101_unsetenv(env, err, RESOURCE_LOG_ENV);
+}
+
+static void flush_standard_streams(const struct p101_env *env, struct p101_error *err)
+{
+    P101_TRACE(env);
+    p101_fflush(env, err, stdout);
+
+    if(p101_error_has_no_error(err))
+    {
+        p101_fflush(env, err, stderr);
+    }
 }
 
 _Noreturn static void usage(const struct p101_env *env, struct p101_error *err, const char *program_name, int exit_code, const char *message)
