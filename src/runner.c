@@ -16,8 +16,22 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 
+enum
+{
+    FAULT_GROUP_LIMIT = 128
+};
+
+struct fault_group
+{
+    char   name[NAME_LEN];
+    size_t runs;
+    size_t findings;
+};
+
 static int  run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result);
 static int  run_p101_observe(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result);
+static void update_fault_group(const struct p101_env *env, struct p101_error *err, struct fault_group groups[FAULT_GROUP_LIMIT], size_t *group_count, const struct run_result *result);
+static void print_fault_groups(const struct p101_env *env, struct p101_error *err, const struct fault_group groups[FAULT_GROUP_LIMIT], size_t group_count);
 static bool observe_status_is_acceptable(int status);
 static void clear_fault_environment(const struct p101_env *env, struct p101_error *err);
 static void reset_run_environment(const struct p101_env *env, struct p101_error *err);
@@ -25,16 +39,20 @@ static void flush_standard_streams(const struct p101_env *env, struct p101_error
 
 int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err, const struct arguments *args)
 {
-    struct run_result result;
-    unsigned int      index;
-    size_t            runs;
-    size_t            resource_findings;
-    bool              trouble;
+    struct run_result  result;
+    unsigned int       index;
+    size_t             runs;
+    size_t             resource_findings;
+    struct fault_group groups[FAULT_GROUP_LIMIT];
+    size_t             group_count;
+    bool               trouble;
 
     P101_TRACE(env);
     runs              = 0;
     resource_findings = 0;
-    trouble           = false;
+    group_count       = 0;
+    p101_memset(env, groups, 0, sizeof(groups));
+    trouble = false;
 
     if(run_one_case(env, err, args, 0, &result) != EXIT_SUCCESS)
     {
@@ -75,9 +93,11 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
         }
 
         resource_findings += result.resources.fd_leaks + result.resources.allocation_leaks + result.resources.bad_releases;
+        update_fault_group(env, err, groups, &group_count, &result);
     }
 
     p101_printf(env, err, "p101-error-path-walk: %zu run%s, %zu resource finding%s.\n", runs, runs == 1 ? "" : "s", resource_findings, resource_findings == 1 ? "" : "s");
+    print_fault_groups(env, err, groups, group_count);
 
 done:
     reset_run_environment(env, err);
@@ -93,6 +113,67 @@ done:
     }
 
     return EXIT_SUCCESS;
+}
+
+static void update_fault_group(const struct p101_env *env, struct p101_error *err, struct fault_group groups[FAULT_GROUP_LIMIT], size_t *group_count, const struct run_result *result)
+{
+    const char *name;
+    size_t      findings;
+    size_t      index;
+
+    if(result->fault_index == 0 || !result->fault_hit)
+    {
+        goto done;
+    }
+
+    name     = (result->fault_name[0] == '\0') ? "?" : result->fault_name;
+    findings = result->resources.fd_leaks + result->resources.allocation_leaks + result->resources.bad_releases;
+    index    = *group_count;
+
+    for(size_t i = 0; i < *group_count; i++)
+    {
+        if(p101_strcmp(env, groups[i].name, name) == 0)
+        {
+            index = i;
+            break;
+        }
+    }
+
+    if(index == *group_count)
+    {
+        if(*group_count >= FAULT_GROUP_LIMIT)
+        {
+            goto done;
+        }
+
+        p101_strncpy(env, groups[index].name, name, sizeof(groups[index].name) - 1U);
+        groups[index].name[sizeof(groups[index].name) - 1U] = '\0';
+        (*group_count)++;
+    }
+
+    groups[index].runs++;
+    groups[index].findings += findings;
+
+done:
+    (void)err;
+}
+
+static void print_fault_groups(const struct p101_env *env, struct p101_error *err, const struct fault_group groups[FAULT_GROUP_LIMIT], size_t group_count)
+{
+    if(group_count == 0U)
+    {
+        goto done;
+    }
+
+    p101_fputs(env, err, "p101-error-path-walk: grouped by faulted wrapper:\n", stdout);
+
+    for(size_t i = 0; i < group_count; i++)
+    {
+        p101_printf(env, err, "  %s: %zu run%s, %zu resource finding%s\n", groups[i].name, groups[i].runs, groups[i].runs == 1U ? "" : "s", groups[i].findings, groups[i].findings == 1U ? "" : "s");
+    }
+
+done:
+    return;
 }
 
 static int run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result)

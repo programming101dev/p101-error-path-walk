@@ -35,5 +35,8 @@ Program examples:
 | `p101-error-path-walk -t ../p101-trace/build-clang/p101-trace -- ./prog` | Use an in-tree p101-trace build |
 | `p101-error-path-walk -p ../p101-report/build-clang/p101-report -- ./prog` | Use an in-tree p101-report build |
 
+The final summary groups injected runs by faulted wrapper name and resource
+finding count.
+
 Less common: `./build-all.sh` (build with every compiler), `./check-compilers.sh`
 (detect installed compilers), `./check-env.sh` (verify required tools).

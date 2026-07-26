@@ -17,6 +17,9 @@ The intent is to exercise error paths mechanically:
    `p101-report`;
 7. stop automatically when `P101_FAULT_LOG` says no fault fired.
 
+The final output also groups faulted runs by wrapper name, so repeated failures
+at the same kind of call site are easier to discuss.
+
 This tool controls the child process environment. Programs that create their
 usual `struct p101_env` with the updated `lib_env` automatically pick up
 `P101_FAULT_CALL`, `P101_RESOURCE_LOG`, and `P101_CALL_LOG`.
