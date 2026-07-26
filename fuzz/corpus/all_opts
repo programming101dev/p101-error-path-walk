@@ -1,1 +1,1 @@
--v -n 20 -l resources.log -- ./prog arg
+-v -n 20 -l resources.log -r p101-resource-tracker -p p101-report -- ./prog arg

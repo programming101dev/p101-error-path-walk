@@ -102,7 +102,10 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 #endif
 
     p101_memset(env, &args, 0, sizeof(args));
-    args.max_failures = DEFAULT_MAX_FAILURES;
+    args.max_failures     = DEFAULT_MAX_FAILURES;
+    args.resource_tracker = DEFAULT_TRACKER_PATH;
+    args.p101_report      = DEFAULT_REPORT_PATH;
+    args.fault_errno      = EIO;
 
     /* If parse_arguments takes the -h path, usage()->p101_exit()->p101_longjmp lands
      * here with a non-zero return -- a normal outcome, not a crash. */

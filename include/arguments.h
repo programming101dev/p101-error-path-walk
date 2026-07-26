@@ -16,6 +16,7 @@ struct arguments
     const char  *fault_name;
     const char  *log_prefix;
     const char  *resource_tracker;
+    const char  *p101_report;
     char *const *command_argv;
     unsigned int max_failures;
     int          fault_errno;

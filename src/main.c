@@ -33,9 +33,12 @@ struct run_result
     bool                    fault_hit;
     bool                    resource_log_present;
     bool                    tracker_ok;
+    bool                    report_ok;
     char                    fault_name[NAME_LEN];
     char                    resource_log_path[PATH_LEN];
+    char                    call_log_path[PATH_LEN];
     char                    fault_log_path[PATH_LEN];
+    char                    report_path[PATH_LEN];
     struct resource_summary resources;
 };
 
@@ -46,7 +49,8 @@ static int            run_error_path_walk(const struct p101_env *env, struct p10
 static int            run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result);
 static int            run_child(const struct p101_env *env, struct p101_error *err, const struct arguments *args);
 static int            run_resource_tracker(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const char *log_path, struct resource_summary *summary);
-static void           make_log_paths(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, char resource_path[PATH_LEN], char fault_path[PATH_LEN]);
+static int            run_p101_report(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result);
+static void           make_log_paths(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, char resource_path[PATH_LEN], char call_path[PATH_LEN], char fault_path[PATH_LEN], char report_path[PATH_LEN]);
 static void           truncate_file(const struct p101_env *env, struct p101_error *err, const char *path);
 static bool           file_exists(const struct p101_env *env, const char *path);
 static bool           read_fault_hit(const struct p101_env *env, struct p101_error *err, const char *path, char name[NAME_LEN]);
@@ -65,7 +69,11 @@ static const char FAULT_ERRNO_ENV[]       = "P101_FAULT_ERRNO";
 static const char FAULT_LOG_ENV[]         = "P101_FAULT_LOG";
 static const char FAULT_NAME_ENV[]        = "P101_FAULT_NAME";
 static const char RESOURCE_LOG_ENV[]      = "P101_RESOURCE_LOG";
+static const char CALL_LOG_ENV[]          = "P101_CALL_LOG";
+static const char CALL_LOG_ARGS_ENV[]     = "P101_CALL_LOG_ARGS";
+static const char CALL_LOG_RESULT_ENV[]   = "P101_CALL_LOG_RESULT";
 static const char DEFAULT_TRACKER_PATH[]  = "p101-resource-tracker";
+static const char DEFAULT_REPORT_PATH[]   = "p101-report";
 static const char DEFAULT_LOG_PREFIX[]    = "/tmp/p101-error-path-walk";
 static const char JSON_RECORDS[]          = "\"records\"";
 static const char JSON_FD_LEAKS[]         = "\"fd_leaks\"";
@@ -81,6 +89,8 @@ enum
     EXEC_FAILURE         = 127,
     DEFAULT_MAX_FAILURES = 1024,
     JSON_NUMBER_BASE     = 10,
+    REPORT_ARGC          = 6,
+    REPORT_ARGV_NULL     = 5,
     EXIT_FINDINGS        = 1,
     EXIT_TROUBLE         = 2
 };
@@ -98,6 +108,7 @@ int main(int argc, char *argv[])
     p101_memset(env, &args, 0, sizeof(args));
     args.max_failures       = DEFAULT_MAX_FAILURES;
     args.resource_tracker   = DEFAULT_TRACKER_PATH;
+    args.p101_report        = DEFAULT_REPORT_PATH;
     args.fault_errno        = EIO;
     args.stop_at_exhaustion = true;
 
@@ -159,7 +170,7 @@ static void parse_arguments(const struct p101_env *env, struct p101_error *err, 
     P101_TRACE(env);
     opterr = 0;
 
-    while((opt = p101_getopt(env, argc, argv, ":hvn:l:r:E:F:")) != -1 && p101_error_has_no_error(err))
+    while((opt = p101_getopt(env, argc, argv, ":hvn:l:r:p:E:F:")) != -1 && p101_error_has_no_error(err))
     {
         switch(opt)
         {
@@ -185,6 +196,11 @@ static void parse_arguments(const struct p101_env *env, struct p101_error *err, 
             case 'r':
             {
                 args->resource_tracker = optarg;
+                break;
+            }
+            case 'p':
+            {
+                args->p101_report = optarg;
                 break;
             }
             case 'E':
@@ -260,6 +276,12 @@ static void check_arguments(const struct p101_env *env, struct p101_error *err, 
         goto done;
     }
 
+    if(args->p101_report == NULL || args->p101_report[0] == '\0')
+    {
+        P101_ERROR_RAISE_USER(err, "The p101-report path must not be empty.", ERR_USAGE);
+        goto done;
+    }
+
     if(args->fault_name != NULL && args->fault_name[0] == '\0')
     {
         P101_ERROR_RAISE_USER(err, "The fault-name filter must not be empty.", ERR_USAGE);
@@ -332,6 +354,11 @@ static int run_error_path_walk(const struct p101_env *env, struct p101_error *er
         trouble = true;
     }
 
+    if((int)result.report_ok == 0)
+    {
+        trouble = true;
+    }
+
     resource_findings += result.resources.fd_leaks + result.resources.allocation_leaks + result.resources.bad_releases;
 
     for(index = 1; index <= args->max_failures && p101_error_has_no_error(err); index++)
@@ -346,6 +373,11 @@ static int run_error_path_walk(const struct p101_env *env, struct p101_error *er
         print_run_result(env, err, &result);
 
         if((int)result.tracker_ok == 0)
+        {
+            trouble = true;
+        }
+
+        if((int)result.report_ok == 0)
         {
             trouble = true;
         }
@@ -384,7 +416,7 @@ static int run_one_case(const struct p101_env *env, struct p101_error *err, cons
     P101_TRACE(env);
     p101_memset(env, result, 0, sizeof(*result));
     result->fault_index = fault_index;
-    make_log_paths(env, err, args, fault_index, result->resource_log_path, result->fault_log_path);
+    make_log_paths(env, err, args, fault_index, result->resource_log_path, result->call_log_path, result->fault_log_path, result->report_path);
     truncate_file(env, err, result->resource_log_path);
 
     if(p101_error_has_error(err))
@@ -399,6 +431,13 @@ static int run_one_case(const struct p101_env *env, struct p101_error *err, cons
         goto done;
     }
 
+    truncate_file(env, err, result->call_log_path);
+
+    if(p101_error_has_error(err))
+    {
+        goto done;
+    }
+
     clear_fault_environment(env, err);
 
     if(p101_error_has_error(err))
@@ -407,6 +446,9 @@ static int run_one_case(const struct p101_env *env, struct p101_error *err, cons
     }
 
     p101_setenv(env, err, RESOURCE_LOG_ENV, result->resource_log_path, 1);
+    p101_setenv(env, err, CALL_LOG_ENV, result->call_log_path, 1);
+    p101_setenv(env, err, CALL_LOG_ARGS_ENV, "1", 1);
+    p101_setenv(env, err, CALL_LOG_RESULT_ENV, "1", 1);
     p101_setenv(env, err, FAULT_LOG_ENV, result->fault_log_path, 1);
 
     if(args->fault_name != NULL)
@@ -446,6 +488,11 @@ static int run_one_case(const struct p101_env *env, struct p101_error *err, cons
     if(result->resource_log_present)
     {
         result->tracker_ok = (run_resource_tracker(env, err, args, result->resource_log_path, &result->resources) != EXIT_TROUBLE);
+    }
+
+    if(result->resource_log_present && file_exists(env, result->call_log_path))
+    {
+        result->report_ok = (run_p101_report(env, err, args, result) != EXIT_TROUBLE);
     }
 
 done:
@@ -598,7 +645,75 @@ done:
     return ret_val;
 }
 
-static void make_log_paths(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, char resource_path[PATH_LEN], char fault_path[PATH_LEN])
+static int run_p101_report(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result)
+{
+    char *report_argv[REPORT_ARGC];
+    int   status;
+    pid_t pid;
+    int   ret_val;
+
+    P101_TRACE(env);
+    status  = 0;
+    ret_val = EXIT_TROUBLE;
+    pid     = p101_fork(env, err);
+
+    if(p101_error_has_error(err))
+    {
+        goto done;
+    }
+
+    if(pid == 0)
+    {
+        char report_path[PATH_LEN];
+        char resource_option[] = "-r";
+        char call_option[]     = "-c";
+        char resource_log_path[PATH_LEN];
+        char call_log_path[PATH_LEN];
+
+        p101_strncpy(env, report_path, args->p101_report, sizeof(report_path) - 1U);
+        report_path[sizeof(report_path) - 1U] = '\0';
+        p101_strncpy(env, resource_log_path, result->resource_log_path, sizeof(resource_log_path) - 1U);
+        resource_log_path[sizeof(resource_log_path) - 1U] = '\0';
+        p101_strncpy(env, call_log_path, result->call_log_path, sizeof(call_log_path) - 1U);
+        call_log_path[sizeof(call_log_path) - 1U] = '\0';
+
+        (void)p101_freopen(env, err, result->report_path, "w", stdout);
+        reset_run_environment(env, err);
+
+        if(p101_error_has_error(err))
+        {
+            p101_fprintf(env, err, stderr, "p101-error-path-walk: report setup failed: %s\n", p101_error_get_message(err));
+            p101__exit(env, EXEC_FAILURE);
+        }
+
+        report_argv[0]                = report_path;
+        report_argv[1]                = resource_option;
+        report_argv[2]                = resource_log_path;
+        report_argv[3]                = call_option;
+        report_argv[4]                = call_log_path;
+        report_argv[REPORT_ARGV_NULL] = NULL;
+        p101_execvp(env, err, report_argv[0], report_argv);
+        p101_fprintf(env, err, stderr, "p101-error-path-walk: exec failed for %s: %s\n", args->p101_report, p101_error_get_message(err));
+        p101__exit(env, EXEC_FAILURE);
+    }
+
+    p101_waitpid(env, err, pid, &status, 0);
+
+    if(p101_error_has_error(err))
+    {
+        goto done;
+    }
+
+    if(WIFEXITED(status) && (WEXITSTATUS(status) == EXIT_SUCCESS || WEXITSTATUS(status) == EXIT_FINDINGS))
+    {
+        ret_val = WEXITSTATUS(status);
+    }
+
+done:
+    return ret_val;
+}
+
+static void make_log_paths(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, char resource_path[PATH_LEN], char call_path[PATH_LEN], char fault_path[PATH_LEN], char report_path[PATH_LEN])
 {
     const char *prefix;
     long        pid_value;
@@ -610,16 +725,22 @@ static void make_log_paths(const struct p101_env *env, struct p101_error *err, c
     if(fault_index == 0)
     {
         p101_snprintf(env, err, resource_path, PATH_LEN, "%s-%ld-baseline.resource.log", prefix, pid_value);
+        p101_snprintf(env, err, call_path, PATH_LEN, "%s-%ld-baseline.call.log", prefix, pid_value);
         p101_snprintf(env, err, fault_path, PATH_LEN, "%s-%ld-baseline.fault.log", prefix, pid_value);
+        p101_snprintf(env, err, report_path, PATH_LEN, "%s-%ld-baseline.report.txt", prefix, pid_value);
     }
     else
     {
         p101_snprintf(env, err, resource_path, PATH_LEN, "%s-%ld-fault-%u.resource.log", prefix, pid_value, fault_index);
+        p101_snprintf(env, err, call_path, PATH_LEN, "%s-%ld-fault-%u.call.log", prefix, pid_value, fault_index);
         p101_snprintf(env, err, fault_path, PATH_LEN, "%s-%ld-fault-%u.fault.log", prefix, pid_value, fault_index);
+        p101_snprintf(env, err, report_path, PATH_LEN, "%s-%ld-fault-%u.report.txt", prefix, pid_value, fault_index);
     }
 
     resource_path[PATH_LEN - 1] = '\0';
+    call_path[PATH_LEN - 1]     = '\0';
     fault_path[PATH_LEN - 1]    = '\0';
+    report_path[PATH_LEN - 1]   = '\0';
 }
 
 static void truncate_file(const struct p101_env *env, struct p101_error *err, const char *path)
@@ -637,11 +758,29 @@ static void truncate_file(const struct p101_env *env, struct p101_error *err, co
 
 static bool file_exists(const struct p101_env *env, const char *path)
 {
-    bool exists;
+    struct p101_error *predicate_err;
+    FILE              *stream;
+    bool               exists;
 
     P101_TRACE(env);
-    (void)path;
-    exists = true;
+    exists        = false;
+    predicate_err = p101_error_create(false);
+
+    if(predicate_err == NULL)
+    {
+        goto done;
+    }
+
+    stream = p101_fopen(env, predicate_err, path, "r");
+
+    if(stream != NULL)
+    {
+        exists = true;
+        p101_fclose(env, predicate_err, stream);
+    }
+
+done:
+    p101_error_destroy(predicate_err);
 
     return exists;
 }
@@ -828,7 +967,7 @@ static void print_run_result(const struct p101_env *env, struct p101_error *err,
         p101_fputs(env, err, " resources(unavailable)", stdout);
     }
 
-    p101_printf(env, err, " log=%s\n", result->resource_log_path);
+    p101_printf(env, err, " resource_log=%s call_log=%s report=%s\n", result->resource_log_path, result->call_log_path, result->report_path);
 }
 
 static void print_status_text(const struct p101_env *env, struct p101_error *err, int status)
@@ -854,6 +993,9 @@ static void clear_fault_environment(const struct p101_env *env, struct p101_erro
     p101_unsetenv(env, err, FAULT_ERRNO_ENV);
     p101_unsetenv(env, err, FAULT_LOG_ENV);
     p101_unsetenv(env, err, FAULT_NAME_ENV);
+    p101_unsetenv(env, err, CALL_LOG_ENV);
+    p101_unsetenv(env, err, CALL_LOG_ARGS_ENV);
+    p101_unsetenv(env, err, CALL_LOG_RESULT_ENV);
 }
 
 static void reset_run_environment(const struct p101_env *env, struct p101_error *err)
@@ -873,7 +1015,7 @@ _Noreturn static void usage(const struct p101_env *env, struct p101_error *err, 
         p101_fprintf(env, err, stderr, "%s\n\n", message);
     }
 
-    p101_fprintf(env, err, stderr, "Usage: %s [-h] [-v] [-n <count>] [-l <prefix>] [-r <p101-resource-tracker>] [-E <errno>] [-F <name>] -- <command> [args...]\n", program_name);
+    p101_fprintf(env, err, stderr, "Usage: %s [-h] [-v] [-n <count>] [-l <prefix>] [-r <p101-resource-tracker>] [-p <p101-report>] [-E <errno>] [-F <name>] -- <command> [args...]\n", program_name);
     p101_fputs(env, err, "Options:\n", stderr);
     p101_fputs(env, err, "  -h                      Display this help message and exit\n", stderr);
     p101_fputs(env, err, "  -v                      Enable verbose p101 tracing in the walker\n", stderr);
@@ -881,6 +1023,7 @@ _Noreturn static void usage(const struct p101_env *env, struct p101_error *err, 
     p101_fputs(env, err, "                          (default: 1024, stops early when no fault fires)\n", stderr);
     p101_fputs(env, err, "  -l <prefix>             Prefix for per-run resource/fault logs\n", stderr);
     p101_fputs(env, err, "  -r <p101-resource-tracker>   p101-resource-tracker executable (default: PATH lookup)\n", stderr);
+    p101_fputs(env, err, "  -p <p101-report>        p101-report executable (default: PATH lookup)\n", stderr);
     p101_fputs(env, err, "  -E <errno>              errno injected by failed wrappers (default: EIO)\n", stderr);
     p101_fputs(env, err, "  -F <name>               Only count/fail matching wrapper names, e.g. open\n", stderr);
     p101_fputs(env, err, "\nThe child must use p101_env_create() from an updated lib_env build.\n", stderr);
