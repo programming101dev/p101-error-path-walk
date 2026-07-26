@@ -1,9 +1,9 @@
-# error-path-walk
+# p101-error-path-walk
 
-`error-path-walk` is a launcher for p101 programs. It runs a command once as a
+`p101-error-path-walk` is a launcher for p101 programs. It runs a command once as a
 baseline and then runs it again with `P101_FAULT_CALL=N` set for each failure
 index. Each run gets its own `P101_RESOURCE_LOG`; after the child exits,
-`error-path-walk` runs `resource-tracker -j` over that log and reports whether
+`p101-error-path-walk` runs `resource-tracker -j` over that log and reports whether
 the error path leaked descriptors, leaked allocations, or made a bad release.
 
 The intent is to exercise error paths mechanically:
@@ -22,7 +22,7 @@ usual `struct p101_env` with the updated `lib_env` automatically pick up
 ## Usage
 
 ```sh
-error-path-walk [-h] [-v] [-n <count>] [-l <prefix>] [-r <resource-tracker>] [-E <errno>] [-F <name>] -- <command> [args...]
+p101-error-path-walk [-h] [-v] [-n <count>] [-l <prefix>] [-r <resource-tracker>] [-E <errno>] [-F <name>] -- <command> [args...]
 ```
 
 Options:
@@ -43,8 +43,8 @@ Options:
 Example:
 
 ```sh
-error-path-walk -r ../resource-tracker/build-clang/main -- ./my-p101-program config.txt
-error-path-walk -F open -E 24 -l /tmp/my-run -- ./my-p101-program config.txt
+p101-error-path-walk -r ../resource-tracker/build-clang/main -- ./my-p101-program config.txt
+p101-error-path-walk -F open -E 24 -l /tmp/my-run -- ./my-p101-program config.txt
 ```
 
 Exit status is `0` when every walked error path is resource-clean, `1` when

@@ -1,4 +1,4 @@
-set(PROJECT_NAME "error-path-walk")
+set(PROJECT_NAME "p101-error-path-walk")
 set(PROJECT_VERSION "1.0.0")
 set(PROJECT_DESCRIPTION "Runs a p101 program repeatedly with fault-injection environment settings")
 set(PROJECT_LANGUAGE "C")
@@ -27,7 +27,7 @@ set(BSD_STANDARD_FLAGS
 # Define targets
 set(EXECUTABLE_TARGETS main)
 set(LIBRARY_TARGETS "")
-set(main_OUTPUT_NAME error-path-walk)
+set(main_OUTPUT_NAME p101-error-path-walk)
 
 set(main_SOURCES
         src/main.c

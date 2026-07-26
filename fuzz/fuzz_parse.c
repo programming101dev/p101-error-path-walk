@@ -1,5 +1,5 @@
 /*
- * libFuzzer harness for error-path-walk's argument parser
+ * libFuzzer harness for p101-error-path-walk's argument parser
  * (src/main.c: parse_arguments()). This fuzzes the code YOU write, not a
  * library function.
  *

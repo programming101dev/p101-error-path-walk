@@ -352,14 +352,14 @@ static int run_error_path_walk(const struct p101_env *env, struct p101_error *er
 
         if((int)result.fault_hit == 0)
         {
-            p101_printf(env, err, "error-path-walk: exhausted after %u fault-capable call%s.\n", index - 1U, (index - 1U) == 1U ? "" : "s");
+            p101_printf(env, err, "p101-error-path-walk: exhausted after %u fault-capable call%s.\n", index - 1U, (index - 1U) == 1U ? "" : "s");
             break;
         }
 
         resource_findings += result.resources.fd_leaks + result.resources.allocation_leaks + result.resources.bad_releases;
     }
 
-    p101_printf(env, err, "error-path-walk: %zu run%s, %zu resource finding%s.\n", runs, runs == 1 ? "" : "s", resource_findings, resource_findings == 1 ? "" : "s");
+    p101_printf(env, err, "p101-error-path-walk: %zu run%s, %zu resource finding%s.\n", runs, runs == 1 ? "" : "s", resource_findings, resource_findings == 1 ? "" : "s");
 
 done:
     reset_run_environment(env, err);
@@ -476,7 +476,7 @@ static int run_child(const struct p101_env *env, struct p101_error *err, const s
     if(pid == 0)
     {
         p101_execvp(env, err, args->command_argv[0], args->command_argv);
-        p101_fprintf(env, err, stderr, "error-path-walk: exec failed for %s: %s\n", args->command_argv[0], p101_error_get_message(err));
+        p101_fprintf(env, err, stderr, "p101-error-path-walk: exec failed for %s: %s\n", args->command_argv[0], p101_error_get_message(err));
         p101__exit(env, EXEC_FAILURE);
     }
 
@@ -537,7 +537,7 @@ static int run_resource_tracker(const struct p101_env *env, struct p101_error *e
         tracker_argv[2] = child_log_path;
         tracker_argv[3] = NULL;
         p101_execvp(env, err, tracker_argv[0], tracker_argv);
-        p101_fprintf(env, err, stderr, "error-path-walk: exec failed for %s: %s\n", args->resource_tracker, p101_error_get_message(err));
+        p101_fprintf(env, err, stderr, "p101-error-path-walk: exec failed for %s: %s\n", args->resource_tracker, p101_error_get_message(err));
         p101__exit(env, EXEC_FAILURE);
     }
 
@@ -801,11 +801,11 @@ static void print_run_result(const struct p101_env *env, struct p101_error *err,
 {
     if(result->fault_index == 0)
     {
-        p101_fputs(env, err, "error-path-walk: baseline ", stdout);
+        p101_fputs(env, err, "p101-error-path-walk: baseline ", stdout);
     }
     else
     {
-        p101_printf(env, err, "error-path-walk: fault %u ", result->fault_index);
+        p101_printf(env, err, "p101-error-path-walk: fault %u ", result->fault_index);
 
         if(result->fault_hit)
         {

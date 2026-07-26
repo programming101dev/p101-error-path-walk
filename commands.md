@@ -1,6 +1,6 @@
 # Commands
 
-Quick reference for `error-path-walk`. Every script also supports `--help`.
+Quick reference for `p101-error-path-walk`. Every script also supports `--help`.
 Run `./change-compiler.sh -c <compiler>` once before building.
 
 | Command | What it does |
@@ -25,12 +25,12 @@ Program examples:
 
 | Command | What it does |
 | --- | --- |
-| `error-path-walk -- ./prog` | Run `./prog` normally, then walk fault injections until no fault fires |
-| `error-path-walk -n 0 -- ./prog` | Baseline only |
-| `error-path-walk -n 20 -l /tmp/run -- ./prog config.txt` | Run baseline plus fault calls up to 20 using `/tmp/run-*` logs |
-| `error-path-walk -F open -- ./prog config.txt` | Walk only fault-capable calls named `open` |
-| `error-path-walk -E 24 -- ./prog config.txt` | Inject errno `24` instead of the default `EIO` |
-| `error-path-walk -r ../resource-tracker/build-clang/main -- ./prog` | Use an in-tree resource-tracker build |
+| `p101-error-path-walk -- ./prog` | Run `./prog` normally, then walk fault injections until no fault fires |
+| `p101-error-path-walk -n 0 -- ./prog` | Baseline only |
+| `p101-error-path-walk -n 20 -l /tmp/run -- ./prog config.txt` | Run baseline plus fault calls up to 20 using `/tmp/run-*` logs |
+| `p101-error-path-walk -F open -- ./prog config.txt` | Walk only fault-capable calls named `open` |
+| `p101-error-path-walk -E 24 -- ./prog config.txt` | Inject errno `24` instead of the default `EIO` |
+| `p101-error-path-walk -r ../resource-tracker/build-clang/main -- ./prog` | Use an in-tree resource-tracker build |
 
 Less common: `./build-all.sh` (build with every compiler), `./check-compilers.sh`
 (detect installed compilers), `./check-env.sh` (verify required tools).

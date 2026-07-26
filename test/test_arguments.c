@@ -37,7 +37,7 @@ static void reset_getopt(void)
 
 static void test_parse_accepts_command_after_options(void)
 {
-    char            *argv[] = {"error-path-walk", "-n", "3", "-l", "walk", "-r", "resource-tracker", "-E", "12", "-F", "open", "--", "prog", "arg", NULL};
+    char            *argv[] = {"p101-error-path-walk", "-n", "3", "-l", "walk", "-r", "resource-tracker", "-E", "12", "-F", "open", "--", "prog", "arg", NULL};
     struct arguments args;
 
     reset_getopt();
@@ -62,7 +62,7 @@ static void test_parse_accepts_command_after_options(void)
 
 static void test_parse_rejects_missing_command(void)
 {
-    char            *argv[] = {"error-path-walk", "-n", "0", NULL};
+    char            *argv[] = {"p101-error-path-walk", "-n", "0", NULL};
     struct arguments args;
 
     reset_getopt();
