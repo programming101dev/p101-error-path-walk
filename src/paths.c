@@ -112,7 +112,7 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
     while(p101_error_has_no_error(err) && p101_fgets(env, err, line, sizeof(line), stream) != NULL)
     {
         char       *cursor;
-        char       *field;
+        const char *field;
         const char *version;
         const char *pid;
         const char *calls_seen;
