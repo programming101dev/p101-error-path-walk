@@ -26,6 +26,7 @@
 
 enum
 {
+    FAULT_LOG_VERSION    = 1,
     MSG_LEN              = 256,
     FAULT_LEN            = 32,
     READ_BUF_LEN         = 4096,

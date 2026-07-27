@@ -1,12 +1,10 @@
 #include "resource.h"
 #include "constants.h"
-#include <errno.h>
 #include <p101_c/p101_stdio.h>
 #include <p101_c/p101_stdlib.h>
 #include <p101_c/p101_string.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 static bool parse_resource_summary(const struct p101_env *env, const char *text, struct resource_summary *summary);
 static bool parse_json_size(const struct p101_env *env, const char *text, const char *key, size_t *value);
@@ -77,10 +75,9 @@ static bool parse_resource_summary(const struct p101_env *env, const char *text,
 
 static bool parse_json_size(const struct p101_env *env, const char *text, const char *key, size_t *value)
 {
-    const char   *cursor;
-    char         *end;
-    unsigned long parsed;
-    bool          ok;
+    const char *cursor;
+    size_t      parsed;
+    bool        ok;
 
     ok     = false;
     cursor = p101_strstr(env, text, key);
@@ -98,11 +95,28 @@ static bool parse_json_size(const struct p101_env *env, const char *text, const 
     }
 
     cursor++;
-    parsed = p101_strtoul(env, NULL, cursor, &end, JSON_NUMBER_BASE);
+    while(*cursor == ' ' || *cursor == '\t')
+    {
+        cursor++;
+    }
 
-    if(cursor == end)
+    if(*cursor < '0' || *cursor > '9')
     {
         goto done;
+    }
+
+    parsed = 0U;
+    while(*cursor >= '0' && *cursor <= '9')
+    {
+        size_t digit;
+
+        digit = (size_t)(*cursor - '0');
+        if(parsed > (SIZE_MAX - digit) / (size_t)JSON_NUMBER_BASE)
+        {
+            goto done;
+        }
+        parsed = (parsed * (size_t)JSON_NUMBER_BASE) + digit;
+        cursor++;
     }
 
     *value = parsed;

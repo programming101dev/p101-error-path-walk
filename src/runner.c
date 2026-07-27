@@ -33,6 +33,7 @@ static int    run_p101_observe(const struct p101_env *env, struct p101_error *er
 static void   update_fault_group(const struct p101_env *env, struct p101_error *err, struct fault_group groups[FAULT_GROUP_LIMIT], size_t *group_count, const struct run_result *result);
 static void   print_fault_groups(const struct p101_env *env, struct p101_error *err, const struct fault_group groups[FAULT_GROUP_LIMIT], size_t group_count);
 static size_t resource_finding_count(const struct run_result *result);
+static bool   resource_summary_unavailable(const struct run_result *result);
 static bool   observe_status_is_acceptable(int status);
 static void   clear_fault_environment(const struct p101_env *env, struct p101_error *err);
 static void   reset_run_environment(const struct p101_env *env, struct p101_error *err);
@@ -64,7 +65,7 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
     runs++;
     p101_error_path_walk_print_run_result(env, err, &result);
 
-    if((int)result.observe_ok == 0 || (!p101_error_path_walk_status_is_success(result.status) && resource_finding_count(&result) == 0U))
+    if((int)result.observe_ok == 0 || resource_summary_unavailable(&result) || (!p101_error_path_walk_status_is_success(result.status) && resource_finding_count(&result) == 0U))
     {
         trouble = true;
     }
@@ -82,7 +83,7 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
         runs++;
         p101_error_path_walk_print_run_result(env, err, &result);
 
-        if((int)result.observe_ok == 0)
+        if((int)result.observe_ok == 0 || resource_summary_unavailable(&result))
         {
             trouble = true;
         }
@@ -179,7 +180,17 @@ done:
 
 static size_t resource_finding_count(const struct run_result *result)
 {
+    if(!result->resources.parsed)
+    {
+        return 0U;
+    }
+
     return result->resources.fd_leaks + result->resources.allocation_leaks + result->resources.bad_releases + result->resources.exec_inheritances;
+}
+
+static bool resource_summary_unavailable(const struct run_result *result)
+{
+    return (result->resource_log_present && !result->resources.parsed) != 0;
 }
 
 static int run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result)
@@ -270,6 +281,7 @@ static int run_p101_observe(const struct p101_env *env, struct p101_error *err, 
     char   report_option[]  = "-p";
     char   separator[]      = "--";
     size_t index;
+    size_t command_index;
     int    status;
     pid_t  pid;
 
@@ -298,13 +310,14 @@ static int run_p101_observe(const struct p101_env *env, struct p101_error *err, 
     tool_argv[index++] = report_path;
     tool_argv[index++] = separator;
 
-    for(size_t i = 0; args->command_argv[i] != NULL && index < MAX_TOOL_ARGS - 1U; i++)
+    command_index = 0U;
+    while(args->command_argv[command_index] != NULL && index < MAX_TOOL_ARGS - 1U)
     {
-        tool_argv[index++] = args->command_argv[i];
+        tool_argv[index++] = args->command_argv[command_index++];
     }
     tool_argv[index] = NULL;
 
-    if(index >= MAX_TOOL_ARGS - 1U)
+    if(args->command_argv[command_index] != NULL)
     {
         P101_ERROR_RAISE_USER(err, "The command has too many arguments for p101-error-path-walk.", ERR_USAGE);
         goto done;
