@@ -20,6 +20,9 @@ void p101_error_path_walk_arguments_init(const struct p101_env *env, struct argu
     args->p101_trace         = DEFAULT_TRACE_PATH;
     args->p101_report        = DEFAULT_REPORT_PATH;
     args->fault_errno        = EIO;
+    args->fault_mode         = "error";
+    args->fault_amount       = 1U;
+    args->fault_repeat       = 1U;
     args->stop_at_exhaustion = true;
 }
 
@@ -35,7 +38,7 @@ void p101_error_path_walk_parse_arguments(const struct p101_env *env, struct p10
         p101_error_path_walk_usage(env, err, argv[0], EXIT_SUCCESS, NULL);
     }
 
-    while((opt = p101_getopt(env, argc, argv, ":hvn:l:O:r:t:p:E:F:")) != -1 && p101_error_has_no_error(err))
+    while((opt = p101_getopt(env, argc, argv, ":hvn:l:O:r:t:p:E:F:M:A:R:")) != -1 && p101_error_has_no_error(err))
     {
         switch(opt)
         {
@@ -86,6 +89,21 @@ void p101_error_path_walk_parse_arguments(const struct p101_env *env, struct p10
             case 'F':
             {
                 args->fault_name = optarg;
+                break;
+            }
+            case 'M':
+            {
+                args->fault_mode = optarg;
+                break;
+            }
+            case 'A':
+            {
+                args->fault_amount_str = optarg;
+                break;
+            }
+            case 'R':
+            {
+                args->fault_repeat_str = optarg;
                 break;
             }
             case ':':
@@ -175,6 +193,19 @@ void p101_error_path_walk_check_arguments(const struct p101_env *env, struct p10
         goto done;
     }
 
+    if(args->fault_mode == NULL || (p101_strcmp(env, args->fault_mode, "error") != 0 && p101_strcmp(env, args->fault_mode, "eintr") != 0 && p101_strcmp(env, args->fault_mode, "timeout") != 0 && p101_strcmp(env, args->fault_mode, "short") != 0))
+    {
+        P101_ERROR_RAISE_USER(err, "The fault mode must be error, eintr, timeout, or short.", ERR_USAGE);
+        goto done;
+    }
+
+    if(p101_strcmp(env, args->fault_mode, "short") == 0 &&
+       (args->fault_name == NULL || (p101_strcmp(env, args->fault_name, "read") != 0 && p101_strcmp(env, args->fault_name, "write") != 0 && p101_strcmp(env, args->fault_name, "pread") != 0 && p101_strcmp(env, args->fault_name, "pwrite") != 0)))
+    {
+        P101_ERROR_RAISE_USER(err, "Short-I/O mode requires -F read, write, pread, or pwrite.", ERR_USAGE);
+        goto done;
+    }
+
 done:
     return;
 }
@@ -214,6 +245,29 @@ void p101_error_path_walk_convert_arguments(const struct p101_env *env, struct p
         }
     }
 
+    if(args->fault_amount_str != NULL)
+    {
+        args->fault_amount = p101_parse_unsigned_int(env, err, args->fault_amount_str, 1U);
+        if(p101_error_has_error(err))
+        {
+            P101_ERROR_RAISE_USER(err, "The short-I/O amount must be an unsigned integer.", ERR_USAGE);
+            goto done;
+        }
+    }
+
+    if(args->fault_repeat_str != NULL)
+    {
+        int parsed_repeat;
+
+        parsed_repeat = p101_parse_positive_int(env, err, args->fault_repeat_str, 1);
+        if(p101_error_has_error(err))
+        {
+            P101_ERROR_RAISE_USER(err, "The fault repeat count must be a positive integer.", ERR_USAGE);
+            goto done;
+        }
+        args->fault_repeat = (unsigned)parsed_repeat;
+    }
+
 done:
     return;
 }
@@ -228,7 +282,11 @@ _Noreturn void p101_error_path_walk_usage(const struct p101_env *env, struct p10
         p101_fprintf(env, err, stderr, "%s\n\n", message);
     }
 
-    p101_fprintf(env, err, stderr, "Usage: %s [-h] [-v] [-n <count>] [-l <prefix>] [-O <p101-observe>] [-r <p101-resource-tracker>] [-t <p101-trace>] [-p <p101-report>] [-E <errno>] [-F <name>] -- <command> [args...]\n", program_name);
+    p101_fprintf(env,
+                 err,
+                 stderr,
+                 "Usage: %s [-h] [-v] [-n <count>] [-l <prefix>] [-O <p101-observe>] [-r <p101-resource-tracker>] [-t <p101-trace>] [-p <p101-report>] [-E <errno>] [-F <name>] [-M <mode>] [-A <amount>] [-R <count>] -- <command> [args...]\n",
+                 program_name);
     p101_fputs(env, err, "Options:\n", stderr);
     p101_fputs(env, err, "  -h                      Display this help message and exit\n", stderr);
     p101_fputs(env, err, "  -v                      Enable verbose p101 tracing in the walker\n", stderr);
@@ -241,6 +299,9 @@ _Noreturn void p101_error_path_walk_usage(const struct p101_env *env, struct p10
     p101_fputs(env, err, "  -p <p101-report>        p101-report executable (default: PATH lookup)\n", stderr);
     p101_fputs(env, err, "  -E <errno>              errno injected by failed wrappers (default: EIO)\n", stderr);
     p101_fputs(env, err, "  -F <name>               Only count/fail matching wrapper names, e.g. open\n", stderr);
+    p101_fputs(env, err, "  -M <mode>               error, eintr, timeout, or short (default: error)\n", stderr);
+    p101_fputs(env, err, "  -A <amount>             Maximum bytes for short read/write (default: 1)\n", stderr);
+    p101_fputs(env, err, "  -R <count>              Inject at this and the next count-1 matching calls\n", stderr);
     p101_fputs(env, err, "\nThe child must use p101_env_create() from an updated lib_env build.\n", stderr);
 #else
     (void)message;

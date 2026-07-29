@@ -117,6 +117,8 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
         const char *pid;
         const char *calls_seen;
         const char *errnum;
+        const char *mode;
+        const char *amount;
         size_t      length;
 
         length = p101_strlen(env, line);
@@ -139,14 +141,22 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
         calls_seen = split_tab(&cursor);
         field      = split_tab(&cursor);
         errnum     = split_tab(&cursor);
+        mode       = NULL;
+        amount     = NULL;
 
-        if(version == NULL || pid == NULL || calls_seen == NULL || field == NULL || errnum == NULL || cursor != NULL)
+        if(version != NULL && p101_strcmp(env, version, "2") == 0)
+        {
+            mode   = split_tab(&cursor);
+            amount = split_tab(&cursor);
+        }
+
+        if(version == NULL || pid == NULL || calls_seen == NULL || field == NULL || errnum == NULL || (p101_strcmp(env, version, "2") == 0 && (mode == NULL || amount == NULL)) || cursor != NULL)
         {
             P101_ERROR_RAISE_USER(err, "The fault log contains a malformed P101FAULT record.", ERR_USAGE);
             goto done;
         }
 
-        if(p101_strcmp(env, version, "1") != 0)
+        if(p101_strcmp(env, version, "1") != 0 && p101_strcmp(env, version, "2") != 0)
         {
             P101_ERROR_RAISE_USER(err, "The fault log version is not supported.", ERR_USAGE);
             goto done;

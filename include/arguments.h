@@ -14,6 +14,9 @@ struct arguments
     const char  *max_failures_str;
     const char  *fault_errno_str;
     const char  *fault_name;
+    const char  *fault_mode;
+    const char  *fault_amount_str;
+    const char  *fault_repeat_str;
     const char  *log_prefix;
     const char  *p101_observe;
     const char  *resource_tracker;
@@ -22,6 +25,8 @@ struct arguments
     char *const *command_argv;
     unsigned int max_failures;
     int          fault_errno;
+    unsigned int fault_amount;
+    unsigned int fault_repeat;
     bool         verbose;
     bool         stop_at_exhaustion;
 };

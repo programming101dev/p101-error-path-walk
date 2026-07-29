@@ -2,13 +2,18 @@
 #include "constants.h"
 #include "errors.h"
 #include "paths.h"
+#include "resource.h"
 #include "unity.h"
+#include <p101_c/p101_stdio.h>
 #include <p101_c/p101_string.h>
 #include <p101_env/env.h>
 #include <p101_error/error.h>
+#include <p101_posix/p101_stdio.h>
+#include <p101_posix/p101_stdlib.h>
 #include <p101_posix/p101_unistd.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 static struct p101_error *error;
 static struct p101_env   *env;
@@ -42,13 +47,7 @@ static void test_parse_accepts_command_after_options(void)
     struct arguments args;
 
     reset_getopt();
-    p101_memset(env, &args, 0, sizeof(args));
-    args.p101_observe     = DEFAULT_OBSERVE_PATH;
-    args.max_failures     = DEFAULT_MAX_FAILURES;
-    args.resource_tracker = DEFAULT_TRACKER_PATH;
-    args.p101_trace       = DEFAULT_TRACE_PATH;
-    args.p101_report      = DEFAULT_REPORT_PATH;
-    args.fault_errno      = EIO;
+    p101_error_path_walk_arguments_init(env, &args);
 
     p101_error_path_walk_parse_arguments(env, error, 20, argv, &args);
     p101_error_path_walk_check_arguments(env, error, &args);
@@ -67,19 +66,45 @@ static void test_parse_accepts_command_after_options(void)
     TEST_ASSERT_EQUAL_STRING("arg", args.command_argv[1]);
 }
 
+static void test_parse_accepts_short_io_and_repeat(void)
+{
+    char            *argv[] = {"p101-error-path-walk", "-F", "read", "-M", "short", "-A", "7", "-R", "3", "--", "prog", NULL};
+    struct arguments args;
+
+    reset_getopt();
+    p101_error_path_walk_arguments_init(env, &args);
+
+    p101_error_path_walk_parse_arguments(env, error, 11, argv, &args);
+    p101_error_path_walk_check_arguments(env, error, &args);
+    p101_error_path_walk_convert_arguments(env, error, &args);
+
+    TEST_ASSERT_FALSE(p101_error_has_error(error));
+    TEST_ASSERT_EQUAL_STRING("short", args.fault_mode);
+    TEST_ASSERT_EQUAL_UINT(7U, args.fault_amount);
+    TEST_ASSERT_EQUAL_UINT(3U, args.fault_repeat);
+}
+
+static void test_short_io_requires_supported_wrapper_filter(void)
+{
+    char            *argv[] = {"p101-error-path-walk", "-M", "short", "--", "prog", NULL};
+    struct arguments args;
+
+    reset_getopt();
+    p101_error_path_walk_arguments_init(env, &args);
+
+    p101_error_path_walk_parse_arguments(env, error, 5, argv, &args);
+    p101_error_path_walk_check_arguments(env, error, &args);
+
+    TEST_ASSERT_TRUE(p101_error_is_error(error, P101_ERROR_USER, ERR_USAGE));
+}
+
 static void test_parse_rejects_missing_command(void)
 {
     char            *argv[] = {"p101-error-path-walk", "-n", "0", NULL};
     struct arguments args;
 
     reset_getopt();
-    p101_memset(env, &args, 0, sizeof(args));
-    args.p101_observe     = DEFAULT_OBSERVE_PATH;
-    args.max_failures     = DEFAULT_MAX_FAILURES;
-    args.resource_tracker = DEFAULT_TRACKER_PATH;
-    args.p101_trace       = DEFAULT_TRACE_PATH;
-    args.p101_report      = DEFAULT_REPORT_PATH;
-    args.fault_errno      = EIO;
+    p101_error_path_walk_arguments_init(env, &args);
 
     p101_error_path_walk_parse_arguments(env, error, 3, argv, &args);
     p101_error_path_walk_check_arguments(env, error, &args);
@@ -93,11 +118,44 @@ static void test_file_exists_checks_real_files(void)
     TEST_ASSERT_FALSE(p101_error_path_walk_file_exists(env, "/tmp/p101-error-path-walk-definitely-missing-file"));
 }
 
+static void test_resource_summary_includes_generic_findings(void)
+{
+    static const char      json[] = "{\"records\":3,\"fd_leaks\":0,\"allocation_leaks\":0,\"bad_releases\":0,\"exec_inheritances\":0,\"generic_resource_leaks\":1,\"generic_bad_releases\":2}\n";
+    struct resource_summary summary;
+    FILE                   *stream;
+    char                    path[] = "/tmp/p101-error-path-walk-resource-XXXXXX";
+    int                     fd;
+
+    fd = p101_mkstemp(env, error, path);
+    TEST_ASSERT_FALSE(p101_error_has_error(error));
+    TEST_ASSERT_NOT_EQUAL(-1, fd);
+
+    stream = p101_fdopen(env, error, fd, "w");
+    TEST_ASSERT_FALSE(p101_error_has_error(error));
+    TEST_ASSERT_NOT_NULL(stream);
+    TEST_ASSERT_NOT_EQUAL(EOF, p101_fputs(env, error, json, stream));
+    TEST_ASSERT_EQUAL_INT(0, p101_fclose(env, error, stream));
+    TEST_ASSERT_FALSE(p101_error_has_error(error));
+
+    p101_error_path_walk_read_resource_json(env, error, path, &summary);
+
+    TEST_ASSERT_FALSE(p101_error_has_error(error));
+    TEST_ASSERT_TRUE(summary.parsed);
+    TEST_ASSERT_EQUAL_UINT(3U, summary.records);
+    TEST_ASSERT_EQUAL_UINT(1U, summary.generic_resource_leaks);
+    TEST_ASSERT_EQUAL_UINT(2U, summary.generic_bad_releases);
+
+    TEST_ASSERT_EQUAL_INT(0, p101_unlink(env, error, path));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
     RUN_TEST(test_parse_accepts_command_after_options);
+    RUN_TEST(test_parse_accepts_short_io_and_repeat);
+    RUN_TEST(test_short_io_requires_supported_wrapper_filter);
     RUN_TEST(test_parse_rejects_missing_command);
     RUN_TEST(test_file_exists_checks_real_files);
+    RUN_TEST(test_resource_summary_includes_generic_findings);
     return UNITY_END();
 }

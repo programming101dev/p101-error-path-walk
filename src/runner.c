@@ -185,7 +185,7 @@ static size_t resource_finding_count(const struct run_result *result)
         return 0U;
     }
 
-    return result->resources.fd_leaks + result->resources.allocation_leaks + result->resources.bad_releases + result->resources.exec_inheritances;
+    return result->resources.fd_leaks + result->resources.allocation_leaks + result->resources.bad_releases + result->resources.exec_inheritances + result->resources.generic_resource_leaks + result->resources.generic_bad_releases;
 }
 
 static bool resource_summary_unavailable(const struct run_result *result)
@@ -219,6 +219,17 @@ static int run_one_case(const struct p101_env *env, struct p101_error *err, cons
     if(args->fault_name != NULL)
     {
         p101_setenv(env, err, CHILD_FAULT_NAME_ENV, args->fault_name, 1);
+    }
+
+    p101_setenv(env, err, CHILD_FAULT_MODE_ENV, args->fault_mode, 1);
+    {
+        char amount_value[FAULT_LEN];
+        char repeat_value[FAULT_LEN];
+
+        p101_snprintf(env, err, amount_value, sizeof(amount_value), "%u", args->fault_amount);
+        p101_snprintf(env, err, repeat_value, sizeof(repeat_value), "%u", args->fault_repeat);
+        p101_setenv(env, err, CHILD_FAULT_AMOUNT_ENV, amount_value, 1);
+        p101_setenv(env, err, CHILD_FAULT_REPEAT_ENV, repeat_value, 1);
     }
 
     if(args->fault_errno_str != NULL)
@@ -376,6 +387,9 @@ static void clear_fault_environment(const struct p101_env *env, struct p101_erro
     p101_unsetenv(env, err, FAULT_ERRNO_ENV);
     p101_unsetenv(env, err, FAULT_LOG_ENV);
     p101_unsetenv(env, err, FAULT_NAME_ENV);
+    p101_unsetenv(env, err, FAULT_MODE_ENV);
+    p101_unsetenv(env, err, FAULT_AMOUNT_ENV);
+    p101_unsetenv(env, err, FAULT_REPEAT_ENV);
     p101_unsetenv(env, err, CALL_LOG_ENV);
     p101_unsetenv(env, err, CALL_LOG_ARGS_ENV);
     p101_unsetenv(env, err, CALL_LOG_RESULT_ENV);
@@ -383,6 +397,9 @@ static void clear_fault_environment(const struct p101_env *env, struct p101_erro
     p101_unsetenv(env, err, CHILD_FAULT_ERRNO_ENV);
     p101_unsetenv(env, err, CHILD_FAULT_LOG_ENV);
     p101_unsetenv(env, err, CHILD_FAULT_NAME_ENV);
+    p101_unsetenv(env, err, CHILD_FAULT_MODE_ENV);
+    p101_unsetenv(env, err, CHILD_FAULT_AMOUNT_ENV);
+    p101_unsetenv(env, err, CHILD_FAULT_REPEAT_ENV);
 }
 
 static void reset_run_environment(const struct p101_env *env, struct p101_error *err)

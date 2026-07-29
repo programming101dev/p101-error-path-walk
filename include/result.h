@@ -2,18 +2,11 @@
 #define P101_ERROR_PATH_WALK_RESULT_H
 
 #include "arguments.h"
+#include <p101_tool_event/summary.h>
 #include <stdbool.h>
 #include <stddef.h>
 
-struct resource_summary
-{
-    size_t records;
-    size_t fd_leaks;
-    size_t allocation_leaks;
-    size_t bad_releases;
-    size_t exec_inheritances;
-    bool   parsed;
-};
+#define resource_summary p101_tool_event_resource_summary
 
 struct run_result
 {

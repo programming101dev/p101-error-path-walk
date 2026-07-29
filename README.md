@@ -32,7 +32,7 @@ usual `struct p101_env` with the updated `lib_env` automatically pick up
 ## Usage
 
 ```sh
-p101-error-path-walk [-h] [-v] [-n <count>] [-l <prefix>] [-O <p101-observe>] [-r <p101-resource-tracker>] [-t <p101-trace>] [-p <p101-report>] [-E <errno>] [-F <name>] -- <command> [args...]
+p101-error-path-walk [-h] [-v] [-n <count>] [-l <prefix>] [-O <p101-observe>] [-r <p101-resource-tracker>] [-t <p101-trace>] [-p <p101-report>] [-E <errno>] [-F <name>] [-M <mode>] [-A <amount>] [-R <count>] -- <command> [args...]
 ```
 
 Options:
@@ -56,17 +56,27 @@ Options:
   `EIO`.
 - `-F <name>` counts and fails only a named p101 wrapper, such as `open`,
   `read`, `malloc`, or `socket`.
+- `-M <mode>` selects `error`, `eintr`, `timeout`, or `short`. `eintr` and
+  `timeout` inject `EINTR` and `ETIMEDOUT`; `short` performs a real bounded
+  `read`, `write`, `pread`, or `pwrite` and returns its partial result.
+- `-A <amount>` sets the maximum byte count used by short-I/O injection.
+- `-R <count>` injects the selected outcome at the chosen call and the next
+  `count - 1` matching calls, which exercises retry loops.
 
 Example:
 
 ```sh
 p101-error-path-walk -O ../p101-observe/build-clang/p101-observe -r ../p101-resource-tracker/build-clang/p101-resource-tracker -t ../p101-trace/build-clang/p101-trace -p ../p101-report/build-clang/p101-report -- ./my-p101-program config.txt
 p101-error-path-walk -F open -E 24 -l /tmp/my-run -- ./my-p101-program config.txt
+p101-error-path-walk -F read -M eintr -R 3 -- ./my-p101-program input
+p101-error-path-walk -F write -M short -A 1 -- ./my-p101-program
 ```
 
 Exit status is `0` when every walked error path is resource-clean, `1` when the
 observed cases contain leaks or bad releases, and `2` when the walker, baseline
 run, `p101-observe`, or one of the helper analyzers failed.
+Generic `P101RESOURCE` leaks and invalid lifecycle transitions count the same
+way as descriptor and allocation findings.
 
 ## Boundaries
 
