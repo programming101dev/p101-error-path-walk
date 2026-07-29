@@ -353,12 +353,12 @@ static int run_p101_observe(const struct p101_env *env, struct p101_error *err, 
         if(p101_freopen(env, err, result->observe_stdout_path, "w", stdout) == NULL || p101_freopen(env, err, result->observe_stderr_path, "w", stderr) == NULL || p101_error_has_error(err))
         {
             p101_fprintf(env, err, stderr, "p101-error-path-walk: observe setup failed: %s\n", p101_error_get_message(err));
-            p101_exit_immediately(env, EXEC_FAILURE);
+            p101_posix_exit_immediately(env, EXEC_FAILURE);
         }
 
         p101_execvp(env, err, tool_argv[0], tool_argv);
         p101_fprintf(env, err, stderr, "p101-error-path-walk: exec failed for %s: %s\n", args->p101_observe, p101_error_get_message(err));
-        p101_exit_immediately(env, EXEC_FAILURE);
+        p101_posix_exit_immediately(env, EXEC_FAILURE);
     }
 
     p101_waitpid(env, err, pid, &status, 0);
