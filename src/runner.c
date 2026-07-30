@@ -16,6 +16,10 @@
 #include <stdlib.h>
 #include <sys/wait.h>
 
+#ifdef P101_ERROR_PATH_WALK_TESTING
+extern void __gcov_dump(void);
+#endif
+
 enum
 {
     FAULT_GROUP_LIMIT = 128
@@ -356,14 +360,20 @@ static int run_p101_observe(const struct p101_env *env, struct p101_error *err, 
 
     if(pid == 0)
     {
-        if(p101_freopen(env, err, result->observe_stdout_path, "w", stdout) == NULL || p101_freopen(env, err, result->observe_stderr_path, "w", stderr) == NULL || p101_error_has_error(err))
+        if(p101_freopen(env, err, result->observe_stdout_path, "w", stdout) == NULL || p101_freopen(env, err, result->observe_stderr_path, "w", stderr) == NULL)
         {
             p101_fprintf(env, err, stderr, "p101-error-path-walk: observe setup failed: %s\n", p101_error_get_message(err));
+#ifdef P101_ERROR_PATH_WALK_TESTING
+            __gcov_dump();
+#endif
             p101_posix_exit_immediately(env, EXEC_FAILURE);
         }
 
         p101_execvp(env, err, tool_argv[0], tool_argv);
         p101_fprintf(env, err, stderr, "p101-error-path-walk: exec failed for %s: %s\n", args->p101_observe, p101_error_get_message(err));
+#ifdef P101_ERROR_PATH_WALK_TESTING
+        __gcov_dump();
+#endif
         p101_posix_exit_immediately(env, EXEC_FAILURE);
     }
 
@@ -425,3 +435,59 @@ static void flush_standard_streams(const struct p101_env *env, struct p101_error
         p101_fflush(env, err, stderr);
     }
 }
+
+#ifdef P101_ERROR_PATH_WALK_TESTING
+int p101_error_path_walk_test_run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result)
+{
+    return run_one_case(env, err, args, fault_index, result);
+}
+
+int p101_error_path_walk_test_run_observe(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result)
+{
+    return run_p101_observe(env, err, args, result);
+}
+
+bool p101_error_path_walk_test_observe_status(int status)
+{
+    return observe_status_is_acceptable(status);
+}
+
+size_t p101_error_path_walk_test_resource_finding_count(const struct run_result *result)
+{
+    return resource_finding_count(result);
+}
+
+bool p101_error_path_walk_test_resource_summary_unavailable(const struct run_result *result)
+{
+    return resource_summary_unavailable(result);
+}
+
+void p101_error_path_walk_test_exercise_fault_groups(const struct p101_env *env, struct p101_error *err)
+{
+    struct fault_group groups[FAULT_GROUP_LIMIT];
+    struct run_result  result;
+    size_t             group_count;
+
+    p101_memset(env, groups, 0, sizeof(groups));
+    p101_memset(env, &result, 0, sizeof(result));
+    group_count = 0U;
+    print_fault_groups(env, err, groups, group_count);
+    update_fault_group(env, err, groups, &group_count, &result);
+    result.fault_index = 1U;
+    update_fault_group(env, err, groups, &group_count, &result);
+    result.fault_hit          = true;
+    result.resources.parsed   = true;
+    result.resources.fd_leaks = 1U;
+    update_fault_group(env, err, groups, &group_count, &result);
+    update_fault_group(env, err, groups, &group_count, &result);
+
+    for(size_t index = group_count; index < FAULT_GROUP_LIMIT; index++)
+    {
+        p101_snprintf(env, err, result.fault_name, sizeof(result.fault_name), "call-%zu", index);
+        update_fault_group(env, err, groups, &group_count, &result);
+    }
+    p101_strncpy(env, result.fault_name, "overflow", sizeof(result.fault_name));
+    update_fault_group(env, err, groups, &group_count, &result);
+    print_fault_groups(env, err, groups, group_count);
+}
+#endif

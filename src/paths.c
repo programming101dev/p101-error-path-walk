@@ -1,6 +1,7 @@
 #include "paths.h"
 #include "constants.h"
 #include "errors.h"
+#include <errno.h>
 #include <p101_c/p101_stdio.h>
 #include <p101_c/p101_string.h>
 #include <p101_posix/p101_stdio.h>
@@ -10,6 +11,9 @@
 
 static void  join_path(const struct p101_env *env, struct p101_error *err, char destination[PATH_LEN], const char *dir, const char *name);
 static char *split_tab(char **cursor);
+#ifdef P101_ERROR_PATH_WALK_TESTING
+static bool force_error_create_failure;
+#endif
 
 void p101_error_path_walk_make_log_paths(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result)
 {
@@ -64,8 +68,12 @@ bool p101_error_path_walk_file_exists(const struct p101_env *env, const char *pa
     bool               exists;
 
     P101_TRACE_SCOPE(env);
-    exists        = false;
-    predicate_err = p101_error_create(false);
+    exists = false;
+    predicate_err =
+#ifdef P101_ERROR_PATH_WALK_TESTING
+        force_error_create_failure ? NULL :
+#endif
+                                     p101_error_create(false);
 
     if(predicate_err == NULL)
     {
@@ -88,28 +96,34 @@ done:
 
 bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101_error *err, const char *path, char name[NAME_LEN])
 {
-    FILE *stream;
-    char  line[READ_BUF_LEN];
-    bool  hit;
+    struct p101_error *predicate_err;
+    FILE              *stream;
+    char               line[READ_BUF_LEN];
+    bool               hit;
 
     P101_TRACE_SCOPE(env);
     stream  = NULL;
     hit     = false;
     name[0] = '\0';
-
-    if(!p101_error_path_walk_file_exists(env, path))
+    predicate_err =
+#ifdef P101_ERROR_PATH_WALK_TESTING
+        force_error_create_failure ? NULL :
+#endif
+                                     p101_error_create(false);
+    if(predicate_err == NULL)
     {
+        P101_ERROR_RAISE_ERRNO(err, ENOMEM);
         goto done;
     }
-
-    stream = p101_fopen(env, err, path, "r");
-
+    stream = p101_fopen(env, predicate_err, path, "r");
     if(stream == NULL)
     {
+        p101_error_destroy(predicate_err);
         goto done;
     }
+    p101_error_destroy(predicate_err);
 
-    while(p101_error_has_no_error(err) && p101_fgets(env, err, line, sizeof(line), stream) != NULL)
+    for(;;)
     {
         char       *cursor;
         const char *field;
@@ -121,6 +135,10 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
         const char *amount;
         size_t      length;
 
+        if(p101_fgets(env, err, line, sizeof(line), stream) == NULL)
+        {
+            break;
+        }
         length = p101_strlen(env, line);
         if(length == sizeof(line) - 1U && p101_strchr(env, line, '\n') == NULL)
         {
@@ -131,7 +149,7 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
         cursor = line;
         field  = split_tab(&cursor);
 
-        if(field == NULL || p101_strcmp(env, field, "P101FAULT") != 0)
+        if(p101_strcmp(env, field, "P101FAULT") != 0)
         {
             continue;
         }
@@ -214,3 +232,10 @@ static char *split_tab(char **cursor)
 done:
     return start;
 }
+
+#ifdef P101_ERROR_PATH_WALK_TESTING
+void p101_error_path_walk_test_force_error_create_failure(bool force)
+{
+    force_error_create_failure = force;
+}
+#endif

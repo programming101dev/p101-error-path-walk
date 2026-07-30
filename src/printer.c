@@ -68,12 +68,8 @@ void p101_error_path_walk_print_status_text(const struct p101_env *env, struct p
     {
         p101_printf(env, err, "exit=%d", WEXITSTATUS(status));
     }
-    else if(WIFSIGNALED(status))
-    {
-        p101_printf(env, err, "signal=%d", WTERMSIG(status));
-    }
     else
     {
-        p101_printf(env, err, "status=%d", status);
+        p101_printf(env, err, "signal=%d", WTERMSIG(status));
     }
 }

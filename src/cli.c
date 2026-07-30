@@ -10,6 +10,11 @@
 #include <p101_posix/p101_unistd.h>
 #include <stdlib.h>
 
+static void handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option, const char *option_argument, int option_character, const char *program_name);
+static bool required_text_missing(const char *text);
+static bool fault_mode_supported(const struct p101_env *env, const char *mode);
+static bool short_io_name_supported(const struct p101_env *env, const char *name);
+
 void p101_error_path_walk_arguments_init(const struct p101_env *env, struct arguments *args)
 {
     P101_TRACE_SCOPE(env);
@@ -41,115 +46,102 @@ void p101_error_path_walk_parse_arguments(const struct p101_env *env, struct p10
 
     while((opt = p101_getopt(env, argc, argv, ":hvn:l:O:r:d:t:p:E:F:M:A:R:")) != -1 && p101_error_has_no_error(err))
     {
-        switch(opt)
-        {
-            case 'h':
-            {
-                p101_error_path_walk_usage(env, err, argv[0], EXIT_SUCCESS, NULL);
-            }
-            case 'v':
-            {
-                args->verbose = true;
-                break;
-            }
-            case 'n':
-            {
-                args->max_failures_str = optarg;
-                break;
-            }
-            case 'l':
-            {
-                args->log_prefix = optarg;
-                break;
-            }
-            case 'O':
-            {
-                args->p101_observe = optarg;
-                break;
-            }
-            case 'r':
-            {
-                args->resource_tracker = optarg;
-                break;
-            }
-            case 'd':
-            {
-                args->p101_sync_check = optarg;
-                break;
-            }
-            case 't':
-            {
-                args->p101_trace = optarg;
-                break;
-            }
-            case 'p':
-            {
-                args->p101_report = optarg;
-                break;
-            }
-            case 'E':
-            {
-                args->fault_errno_str = optarg;
-                break;
-            }
-            case 'F':
-            {
-                args->fault_name = optarg;
-                break;
-            }
-            case 'M':
-            {
-                args->fault_mode = optarg;
-                break;
-            }
-            case 'A':
-            {
-                args->fault_amount_str = optarg;
-                break;
-            }
-            case 'R':
-            {
-                args->fault_repeat_str = optarg;
-                break;
-            }
-            case ':':
-            {
-                char msg[MSG_LEN];
-
-                p101_snprintf(env, err, msg, sizeof(msg), "Option '-%c' requires an argument.", optopt ? optopt : '?');
-                P101_ERROR_RAISE_USER(err, msg, ERR_USAGE);
-                break;
-            }
-            case '?':
-            {
-                char msg[MSG_LEN];
-
-                if(p101_isprint(env, optopt))
-                {
-                    p101_snprintf(env, err, msg, sizeof(msg), "Unknown option '-%c'.", optopt);
-                }
-                else
-                {
-                    p101_snprintf(env, err, msg, sizeof(msg), "Unknown option character 0x%02X.", (unsigned)(unsigned char)optopt);
-                }
-
-                P101_ERROR_RAISE_USER(err, msg, ERR_USAGE);
-                break;
-            }
-            default:
-            {
-                char msg[MSG_LEN];
-
-                p101_snprintf(env, err, msg, sizeof(msg), "Internal error: unhandled option '-%c' returned by getopt.", p101_isprint(env, opt) ? opt : '?');
-                P101_ERROR_RAISE_USER(err, msg, ERR_USAGE);
-                break;
-            }
-        }
+        handle_option(env, err, args, opt, optarg, optopt, argv[0]);
     }
 
     if(p101_error_has_no_error(err))
     {
         args->command_argv = &argv[optind];
+    }
+}
+
+static void handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option, const char *option_argument, int option_character, const char *program_name)
+{
+    const char **destination;
+
+    destination = NULL;
+    switch(option)
+    {
+        case 'h':
+        {
+            p101_error_path_walk_usage(env, err, program_name, EXIT_SUCCESS, NULL);
+        }
+        case 'v':
+        {
+            args->verbose = true;
+            break;
+        }
+        case 'n':
+            destination = &args->max_failures_str;
+            break;
+        case 'l':
+            destination = &args->log_prefix;
+            break;
+        case 'O':
+            destination = &args->p101_observe;
+            break;
+        case 'r':
+            destination = &args->resource_tracker;
+            break;
+        case 'd':
+            destination = &args->p101_sync_check;
+            break;
+        case 't':
+            destination = &args->p101_trace;
+            break;
+        case 'p':
+            destination = &args->p101_report;
+            break;
+        case 'E':
+            destination = &args->fault_errno_str;
+            break;
+        case 'F':
+            destination = &args->fault_name;
+            break;
+        case 'M':
+            destination = &args->fault_mode;
+            break;
+        case 'A':
+            destination = &args->fault_amount_str;
+            break;
+        case 'R':
+            destination = &args->fault_repeat_str;
+            break;
+        case ':':
+        {
+            char msg[MSG_LEN];
+
+            p101_snprintf(env, err, msg, sizeof(msg), "Option '-%c' requires an argument.", option_character);
+            P101_ERROR_RAISE_USER(err, msg, ERR_USAGE);
+            break;
+        }
+        case '?':
+        {
+            char msg[MSG_LEN];
+
+            if(p101_isprint(env, option_character))
+            {
+                p101_snprintf(env, err, msg, sizeof(msg), "Unknown option '-%c'.", option_character);
+            }
+            else
+            {
+                p101_snprintf(env, err, msg, sizeof(msg), "Unknown option character 0x%02X.", (unsigned)(unsigned char)option_character);
+            }
+            P101_ERROR_RAISE_USER(err, msg, ERR_USAGE);
+            break;
+        }
+        default:
+        {
+            char msg[MSG_LEN];
+
+            p101_snprintf(env, err, msg, sizeof(msg), "Internal error: unhandled option value %d returned by getopt.", option);
+            P101_ERROR_RAISE_USER(err, msg, ERR_USAGE);
+            break;
+        }
+    }
+    if(destination != NULL)
+    {
+        *destination = option_argument;
     }
 }
 
@@ -169,31 +161,31 @@ void p101_error_path_walk_check_arguments(const struct p101_env *env, struct p10
         goto done;
     }
 
-    if(args->p101_observe == NULL || args->p101_observe[0] == '\0')
+    if(required_text_missing(args->p101_observe))
     {
         P101_ERROR_RAISE_USER(err, "The p101-observe path must not be empty.", ERR_USAGE);
         goto done;
     }
 
-    if(args->resource_tracker == NULL || args->resource_tracker[0] == '\0')
+    if(required_text_missing(args->resource_tracker))
     {
         P101_ERROR_RAISE_USER(err, "The p101-resource-tracker path must not be empty.", ERR_USAGE);
         goto done;
     }
 
-    if(args->p101_trace == NULL || args->p101_trace[0] == '\0')
+    if(required_text_missing(args->p101_trace))
     {
         P101_ERROR_RAISE_USER(err, "The p101-trace path must not be empty.", ERR_USAGE);
         goto done;
     }
 
-    if(args->p101_sync_check == NULL || args->p101_sync_check[0] == '\0')
+    if(required_text_missing(args->p101_sync_check))
     {
         P101_ERROR_RAISE_USER(err, "The p101-sync-check path must not be empty.", ERR_USAGE);
         goto done;
     }
 
-    if(args->p101_report == NULL || args->p101_report[0] == '\0')
+    if(required_text_missing(args->p101_report))
     {
         P101_ERROR_RAISE_USER(err, "The p101-report path must not be empty.", ERR_USAGE);
         goto done;
@@ -205,14 +197,13 @@ void p101_error_path_walk_check_arguments(const struct p101_env *env, struct p10
         goto done;
     }
 
-    if(args->fault_mode == NULL || (p101_strcmp(env, args->fault_mode, "error") != 0 && p101_strcmp(env, args->fault_mode, "eintr") != 0 && p101_strcmp(env, args->fault_mode, "timeout") != 0 && p101_strcmp(env, args->fault_mode, "short") != 0))
+    if(!fault_mode_supported(env, args->fault_mode))
     {
         P101_ERROR_RAISE_USER(err, "The fault mode must be error, eintr, timeout, or short.", ERR_USAGE);
         goto done;
     }
 
-    if(p101_strcmp(env, args->fault_mode, "short") == 0 &&
-       (args->fault_name == NULL || (p101_strcmp(env, args->fault_name, "read") != 0 && p101_strcmp(env, args->fault_name, "write") != 0 && p101_strcmp(env, args->fault_name, "pread") != 0 && p101_strcmp(env, args->fault_name, "pwrite") != 0)))
+    if(p101_strcmp(env, args->fault_mode, "short") == 0 && !short_io_name_supported(env, args->fault_name))
     {
         P101_ERROR_RAISE_USER(err, "Short-I/O mode requires -F read, write, pread, or pwrite.", ERR_USAGE);
         goto done;
@@ -221,6 +212,28 @@ void p101_error_path_walk_check_arguments(const struct p101_env *env, struct p10
 done:
     return;
 }
+
+static bool required_text_missing(const char *text)
+{
+    return text == NULL || text[0] == '\0';
+}
+
+static bool fault_mode_supported(const struct p101_env *env, const char *mode)
+{
+    return mode != NULL && (p101_strcmp(env, mode, "error") == 0 || p101_strcmp(env, mode, "eintr") == 0 || p101_strcmp(env, mode, "timeout") == 0 || p101_strcmp(env, mode, "short") == 0);
+}
+
+static bool short_io_name_supported(const struct p101_env *env, const char *name)
+{
+    return name != NULL && (p101_strcmp(env, name, "read") == 0 || p101_strcmp(env, name, "write") == 0 || p101_strcmp(env, name, "pread") == 0 || p101_strcmp(env, name, "pwrite") == 0);
+}
+
+#ifdef P101_ERROR_PATH_WALK_TESTING
+void p101_error_path_walk_test_handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option)
+{
+    handle_option(env, err, args, option, "value", option, "p101-error-path-walk-test");
+}
+#endif
 
 void p101_error_path_walk_convert_arguments(const struct p101_env *env, struct p101_error *err, struct arguments *args)
 {

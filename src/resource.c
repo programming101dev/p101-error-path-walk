@@ -21,7 +21,7 @@ void p101_error_path_walk_read_resource_json(const struct p101_env *env, struct 
         goto done;
     }
 
-    while(p101_error_has_no_error(err) && used < sizeof(buffer) - 1U)
+    while(used < sizeof(buffer) - 1U)
     {
         const char *line;
 
