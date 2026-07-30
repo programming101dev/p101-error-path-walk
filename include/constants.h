@@ -21,6 +21,7 @@
 #define CHILD_FAULT_REPEAT_ENV "P101_OBSERVE_CHILD_FAULT_REPEAT"
 #define DEFAULT_OBSERVE_PATH "p101-observe"
 #define DEFAULT_TRACKER_PATH "p101-resource-tracker"
+#define DEFAULT_CONCURRENCY_PATH "p101-sync-check"
 #define DEFAULT_TRACE_PATH "p101-trace"
 #define DEFAULT_REPORT_PATH "p101-report"
 #define DEFAULT_LOG_PREFIX "/tmp/p101-error-path-walk"

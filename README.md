@@ -13,8 +13,8 @@ The intent is to exercise error paths mechanically:
 3. fail p101 call 2;
 4. continue through the requested range;
 5. run `p101-observe` for that case;
-6. let `p101-observe` feed the logs to `p101-resource-tracker`, `p101-trace`, and
-   `p101-report`;
+6. let `p101-observe` feed the logs to `p101-resource-tracker`,
+   `p101-sync-check`, `p101-trace`, and `p101-report`;
 7. stop automatically when `P101_FAULT_LOG` says no fault fired.
 
 The final output also groups faulted runs by wrapper name, so repeated failures
@@ -32,7 +32,7 @@ usual `struct p101_env` with the updated `lib_env` automatically pick up
 ## Usage
 
 ```sh
-p101-error-path-walk [-h] [-v] [-n <count>] [-l <prefix>] [-O <p101-observe>] [-r <p101-resource-tracker>] [-t <p101-trace>] [-p <p101-report>] [-E <errno>] [-F <name>] [-M <mode>] [-A <amount>] [-R <count>] -- <command> [args...]
+p101-error-path-walk [-h] [-v] [-n <count>] [-l <prefix>] [-O <p101-observe>] [-r <p101-resource-tracker>] [-d <p101-sync-check>] [-t <p101-trace>] [-p <p101-report>] [-E <errno>] [-F <name>] [-M <mode>] [-A <amount>] [-R <count>] -- <command> [args...]
 ```
 
 Options:
@@ -46,6 +46,8 @@ Options:
   logs.
 - `-O <p101-observe>` chooses the observation conductor executable. The default
   is `p101-observe` through `PATH`.
+- `-d <p101-sync-check>` chooses the concurrency analyzer used by the
+  observation conductor.
 - `-r <p101-resource-tracker>` chooses the analyzer executable. The default is
   `p101-resource-tracker` through `PATH`.
 - `-t <p101-trace>` chooses the trace renderer executable. The default is
@@ -66,7 +68,7 @@ Options:
 Example:
 
 ```sh
-p101-error-path-walk -O ../p101-observe/build-clang/p101-observe -r ../p101-resource-tracker/build-clang/p101-resource-tracker -t ../p101-trace/build-clang/p101-trace -p ../p101-report/build-clang/p101-report -- ./my-p101-program config.txt
+p101-error-path-walk -O ../p101-observe/build-clang/p101-observe -r ../p101-resource-tracker/build-clang/p101-resource-tracker -d ../p101-sync-check/build-clang/p101-sync-check -t ../p101-trace/build-clang/p101-trace -p ../p101-report/build-clang/p101-report -- ./my-p101-program config.txt
 p101-error-path-walk -F open -E 24 -l /tmp/my-run -- ./my-p101-program config.txt
 p101-error-path-walk -F read -M eintr -R 3 -- ./my-p101-program input
 p101-error-path-walk -F write -M short -A 1 -- ./my-p101-program

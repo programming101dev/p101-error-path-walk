@@ -43,13 +43,13 @@ static void reset_getopt(void)
 
 static void test_parse_accepts_command_after_options(void)
 {
-    char            *argv[] = {"p101-error-path-walk", "-n", "3", "-l", "walk", "-O", "p101-observe", "-r", "p101-resource-tracker", "-t", "p101-trace", "-p", "p101-report", "-E", "12", "-F", "open", "--", "prog", "arg", NULL};
+    char            *argv[] = {"p101-error-path-walk", "-n", "3", "-l", "walk", "-O", "p101-observe", "-r", "p101-resource-tracker", "-d", "p101-sync-check", "-t", "p101-trace", "-p", "p101-report", "-E", "12", "-F", "open", "--", "prog", "arg", NULL};
     struct arguments args;
 
     reset_getopt();
     p101_error_path_walk_arguments_init(env, &args);
 
-    p101_error_path_walk_parse_arguments(env, error, 20, argv, &args);
+    p101_error_path_walk_parse_arguments(env, error, 22, argv, &args);
     p101_error_path_walk_check_arguments(env, error, &args);
     p101_error_path_walk_convert_arguments(env, error, &args);
 
@@ -59,6 +59,7 @@ static void test_parse_accepts_command_after_options(void)
     TEST_ASSERT_EQUAL_STRING("walk", args.log_prefix);
     TEST_ASSERT_EQUAL_STRING("p101-observe", args.p101_observe);
     TEST_ASSERT_EQUAL_STRING("p101-resource-tracker", args.resource_tracker);
+    TEST_ASSERT_EQUAL_STRING("p101-sync-check", args.p101_sync_check);
     TEST_ASSERT_EQUAL_STRING("p101-trace", args.p101_trace);
     TEST_ASSERT_EQUAL_STRING("p101-report", args.p101_report);
     TEST_ASSERT_EQUAL_STRING("open", args.fault_name);
@@ -120,7 +121,7 @@ static void test_file_exists_checks_real_files(void)
 
 static void test_resource_summary_includes_generic_findings(void)
 {
-    static const char      json[] = "{\"records\":3,\"fd_leaks\":0,\"allocation_leaks\":0,\"bad_releases\":0,\"exec_inheritances\":0,\"generic_resource_leaks\":1,\"generic_bad_releases\":2}\n";
+    static const char      json[] = "{\"schema\":\"p101-resource-tracker-findings-v3\",\"records\":3,\"fd_leaks\":0,\"allocation_leaks\":0,\"bad_releases\":0,\"exec_inheritances\":0,\"generic_resource_leaks\":1,\"generic_bad_releases\":2,\"malformed\":0,\"bad_version\":0,\"refused\":0,\"log_health\":{\"complete\":true}}\n";
     struct resource_summary summary;
     FILE                   *stream;
     char                    path[] = "/tmp/p101-error-path-walk-resource-XXXXXX";
@@ -144,6 +145,7 @@ static void test_resource_summary_includes_generic_findings(void)
     TEST_ASSERT_EQUAL_UINT(3U, summary.records);
     TEST_ASSERT_EQUAL_UINT(1U, summary.generic_resource_leaks);
     TEST_ASSERT_EQUAL_UINT(2U, summary.generic_bad_releases);
+    TEST_ASSERT_TRUE(summary.log_complete);
 
     TEST_ASSERT_EQUAL_INT(0, p101_unlink(env, error, path));
 }

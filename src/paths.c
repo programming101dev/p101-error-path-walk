@@ -16,7 +16,7 @@ void p101_error_path_walk_make_log_paths(const struct p101_env *env, struct p101
     const char *prefix;
     long        pid_value;
 
-    P101_TRACE(env);
+    P101_TRACE_SCOPE(env);
     prefix    = (args->log_prefix == NULL) ? DEFAULT_LOG_PREFIX : args->log_prefix;
     pid_value = (long)p101_getpid(env);
 
@@ -48,7 +48,7 @@ static void join_path(const struct p101_env *env, struct p101_error *err, char d
 {
     int written;
 
-    P101_TRACE(env);
+    P101_TRACE_SCOPE(env);
     written = p101_snprintf(env, err, destination, PATH_LEN, "%s/%s", dir, name);
 
     if(written < 0 || written >= PATH_LEN)
@@ -63,7 +63,7 @@ bool p101_error_path_walk_file_exists(const struct p101_env *env, const char *pa
     FILE              *stream;
     bool               exists;
 
-    P101_TRACE(env);
+    P101_TRACE_SCOPE(env);
     exists        = false;
     predicate_err = p101_error_create(false);
 
@@ -92,7 +92,7 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
     char  line[READ_BUF_LEN];
     bool  hit;
 
-    P101_TRACE(env);
+    P101_TRACE_SCOPE(env);
     stream  = NULL;
     hit     = false;
     name[0] = '\0';

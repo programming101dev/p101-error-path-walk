@@ -11,7 +11,7 @@ void p101_error_path_walk_read_resource_json(const struct p101_env *env, struct 
     char   buffer[TRACKER_OUTPUT_LIMIT];
     size_t used;
 
-    P101_TRACE(env);
+    P101_TRACE_SCOPE(env);
     p101_memset(env, summary, 0, sizeof(*summary));
     stream = p101_fopen(env, err, path, "r");
     used   = 0;

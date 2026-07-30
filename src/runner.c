@@ -49,7 +49,7 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
     size_t             group_count;
     bool               trouble;
 
-    P101_TRACE(env);
+    P101_TRACE_SCOPE(env);
     runs              = 0;
     resource_findings = 0;
     group_count       = 0;
@@ -190,14 +190,14 @@ static size_t resource_finding_count(const struct run_result *result)
 
 static bool resource_summary_unavailable(const struct run_result *result)
 {
-    return (result->resource_log_present && !result->resources.parsed) != 0;
+    return (!result->resource_log_present || !result->resources.parsed || !result->resources.log_complete) != 0;
 }
 
 static int run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result)
 {
     char fault_value[FAULT_LEN];
 
-    P101_TRACE(env);
+    P101_TRACE_SCOPE(env);
     p101_memset(env, result, 0, sizeof(*result));
     result->fault_index = fault_index;
     p101_error_path_walk_make_log_paths(env, err, args, fault_index, result);
@@ -284,19 +284,21 @@ static int run_p101_observe(const struct p101_env *env, struct p101_error *err, 
     char   observe_path[PATH_LEN];
     char   observe_dir[PATH_LEN];
     char   tracker_path[PATH_LEN];
+    char   concurrency_path[PATH_LEN];
     char   trace_path[PATH_LEN];
     char   report_path[PATH_LEN];
-    char   output_option[]  = "-o";
-    char   tracker_option[] = "-r";
-    char   trace_option[]   = "-t";
-    char   report_option[]  = "-p";
-    char   separator[]      = "--";
+    char   output_option[]      = "-o";
+    char   tracker_option[]     = "-r";
+    char   concurrency_option[] = "-d";
+    char   trace_option[]       = "-t";
+    char   report_option[]      = "-p";
+    char   separator[]          = "--";
     size_t index;
     size_t command_index;
     int    status;
     pid_t  pid;
 
-    P101_TRACE(env);
+    P101_TRACE_SCOPE(env);
     status = 0;
     p101_strncpy(env, observe_path, args->p101_observe, sizeof(observe_path) - 1U);
     observe_path[sizeof(observe_path) - 1U] = '\0';
@@ -304,6 +306,8 @@ static int run_p101_observe(const struct p101_env *env, struct p101_error *err, 
     observe_dir[sizeof(observe_dir) - 1U] = '\0';
     p101_strncpy(env, tracker_path, args->resource_tracker, sizeof(tracker_path) - 1U);
     tracker_path[sizeof(tracker_path) - 1U] = '\0';
+    p101_strncpy(env, concurrency_path, args->p101_sync_check, sizeof(concurrency_path) - 1U);
+    concurrency_path[sizeof(concurrency_path) - 1U] = '\0';
     p101_strncpy(env, trace_path, args->p101_trace, sizeof(trace_path) - 1U);
     trace_path[sizeof(trace_path) - 1U] = '\0';
     p101_strncpy(env, report_path, args->p101_report, sizeof(report_path) - 1U);
@@ -315,6 +319,8 @@ static int run_p101_observe(const struct p101_env *env, struct p101_error *err, 
     tool_argv[index++] = observe_dir;
     tool_argv[index++] = tracker_option;
     tool_argv[index++] = tracker_path;
+    tool_argv[index++] = concurrency_option;
+    tool_argv[index++] = concurrency_path;
     tool_argv[index++] = trace_option;
     tool_argv[index++] = trace_path;
     tool_argv[index++] = report_option;
@@ -382,7 +388,7 @@ static bool observe_status_is_acceptable(int status)
 
 static void clear_fault_environment(const struct p101_env *env, struct p101_error *err)
 {
-    P101_TRACE(env);
+    P101_TRACE_SCOPE(env);
     p101_unsetenv(env, err, FAULT_CALL_ENV);
     p101_unsetenv(env, err, FAULT_ERRNO_ENV);
     p101_unsetenv(env, err, FAULT_LOG_ENV);
@@ -404,14 +410,14 @@ static void clear_fault_environment(const struct p101_env *env, struct p101_erro
 
 static void reset_run_environment(const struct p101_env *env, struct p101_error *err)
 {
-    P101_TRACE(env);
+    P101_TRACE_SCOPE(env);
     clear_fault_environment(env, err);
     p101_unsetenv(env, err, RESOURCE_LOG_ENV);
 }
 
 static void flush_standard_streams(const struct p101_env *env, struct p101_error *err)
 {
-    P101_TRACE(env);
+    P101_TRACE_SCOPE(env);
     p101_fflush(env, err, stdout);
 
     if(p101_error_has_no_error(err))
