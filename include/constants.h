@@ -32,6 +32,7 @@ enum
     FAULT_LEN            = 32,
     READ_BUF_LEN         = 4096,
     TRACKER_OUTPUT_LIMIT = 65536,
+    REPORT_FILE_MODE     = 0600,
     EXEC_FAILURE         = 127,
     DEFAULT_MAX_FAILURES = 1024,
     MAX_FAILURES_LIMIT   = 100000,

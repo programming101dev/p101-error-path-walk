@@ -215,17 +215,17 @@ done:
 
 static bool required_text_missing(const char *text)
 {
-    return text == NULL || text[0] == '\0';
+    return (text == NULL || text[0] == '\0') != 0;
 }
 
 static bool fault_mode_supported(const struct p101_env *env, const char *mode)
 {
-    return mode != NULL && (p101_strcmp(env, mode, "error") == 0 || p101_strcmp(env, mode, "eintr") == 0 || p101_strcmp(env, mode, "timeout") == 0 || p101_strcmp(env, mode, "short") == 0);
+    return (mode != NULL && (p101_strcmp(env, mode, "error") == 0 || p101_strcmp(env, mode, "eintr") == 0 || p101_strcmp(env, mode, "timeout") == 0 || p101_strcmp(env, mode, "short") == 0)) != 0;
 }
 
 static bool short_io_name_supported(const struct p101_env *env, const char *name)
 {
-    return name != NULL && (p101_strcmp(env, name, "read") == 0 || p101_strcmp(env, name, "write") == 0 || p101_strcmp(env, name, "pread") == 0 || p101_strcmp(env, name, "pwrite") == 0);
+    return (name != NULL && (p101_strcmp(env, name, "read") == 0 || p101_strcmp(env, name, "write") == 0 || p101_strcmp(env, name, "pread") == 0 || p101_strcmp(env, name, "pwrite") == 0)) != 0;
 }
 
 #ifdef P101_ERROR_PATH_WALK_TESTING

@@ -608,7 +608,7 @@ static void test_run_observe_covers_argument_flush_fork_wait_and_child_failures(
     TEST_ASSERT_FALSE(p101_error_has_error(error));
 
     args.p101_observe = "/usr/bin/true";
-    fault.call_name   = "freopen";
+    fault.call_name   = "open";
     fault.fail_at     = 1U;
     fault.matches     = 0U;
     p101_env_set_fault_injector(env, inject_selected_failure, &fault);

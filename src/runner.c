@@ -6,19 +6,12 @@
 #include "resource.h"
 #include "result.h"
 #include <p101_c/p101_stdio.h>
-#include <p101_c/p101_stdlib.h>
 #include <p101_c/p101_string.h>
-#include <p101_posix/p101_stdio.h>
 #include <p101_posix/p101_stdlib.h>
-#include <p101_posix/p101_unistd.h>
-#include <p101_posix/sys/p101_wait.h>
+#include <p101_util/tool_run.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/wait.h>
-
-#ifdef P101_ERROR_PATH_WALK_TESTING
-extern void __gcov_dump(void);
-#endif
 
 enum
 {
@@ -41,7 +34,6 @@ static bool   resource_summary_unavailable(const struct run_result *result);
 static bool   observe_status_is_acceptable(int status);
 static void   clear_fault_environment(const struct p101_env *env, struct p101_error *err);
 static void   reset_run_environment(const struct p101_env *env, struct p101_error *err);
-static void   flush_standard_streams(const struct p101_env *env, struct p101_error *err);
 
 int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err, const struct arguments *args)
 {
@@ -300,7 +292,6 @@ static int run_p101_observe(const struct p101_env *env, struct p101_error *err, 
     size_t index;
     size_t command_index;
     int    status;
-    pid_t  pid;
 
     P101_TRACE_SCOPE(env);
     status = 0;
@@ -344,40 +335,17 @@ static int run_p101_observe(const struct p101_env *env, struct p101_error *err, 
         goto done;
     }
 
-    flush_standard_streams(env, err);
-
-    if(p101_error_has_error(err))
     {
-        goto done;
+        struct p101_tool_run_options options;
+
+        options.stdout_path         = result->observe_stdout_path;
+        options.stderr_path         = result->observe_stderr_path;
+        options.diagnostic_name     = "p101-error-path-walk";
+        options.output_mode         = REPORT_FILE_MODE;
+        options.child_setup         = NULL;
+        options.child_setup_context = NULL;
+        status                      = p101_tool_run_capture(env, err, tool_argv, &options);
     }
-
-    pid = p101_fork(env, err);
-
-    if(p101_error_has_error(err))
-    {
-        goto done;
-    }
-
-    if(pid == 0)
-    {
-        if(p101_freopen(env, err, result->observe_stdout_path, "w", stdout) == NULL || p101_freopen(env, err, result->observe_stderr_path, "w", stderr) == NULL)
-        {
-            p101_fprintf(env, err, stderr, "p101-error-path-walk: observe setup failed: %s\n", p101_error_get_message(err));
-#ifdef P101_ERROR_PATH_WALK_TESTING
-            __gcov_dump();
-#endif
-            p101_posix_exit_immediately(env, EXEC_FAILURE);
-        }
-
-        p101_execvp(env, err, tool_argv[0], tool_argv);
-        p101_fprintf(env, err, stderr, "p101-error-path-walk: exec failed for %s: %s\n", args->p101_observe, p101_error_get_message(err));
-#ifdef P101_ERROR_PATH_WALK_TESTING
-        __gcov_dump();
-#endif
-        p101_posix_exit_immediately(env, EXEC_FAILURE);
-    }
-
-    p101_waitpid(env, err, pid, &status, 0);
 
 done:
     return status;
@@ -423,17 +391,6 @@ static void reset_run_environment(const struct p101_env *env, struct p101_error 
     P101_TRACE_SCOPE(env);
     clear_fault_environment(env, err);
     p101_unsetenv(env, err, RESOURCE_LOG_ENV);
-}
-
-static void flush_standard_streams(const struct p101_env *env, struct p101_error *err)
-{
-    P101_TRACE_SCOPE(env);
-    p101_fflush(env, err, stdout);
-
-    if(p101_error_has_no_error(err))
-    {
-        p101_fflush(env, err, stderr);
-    }
 }
 
 #ifdef P101_ERROR_PATH_WALK_TESTING
