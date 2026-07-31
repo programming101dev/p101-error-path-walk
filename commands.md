@@ -27,13 +27,12 @@ Program examples:
 | --- | --- |
 | `p101-error-path-walk -- ./prog` | Run `./prog` normally, then walk fault injections until no fault fires |
 | `p101-error-path-walk -n 0 -- ./prog` | Baseline only |
-| `p101-error-path-walk -n 20 -l /tmp/run -- ./prog config.txt` | Run baseline plus fault calls up to 20 using `/tmp/run-*` observe directories |
+| `p101-error-path-walk -n 20 -l /tmp/run -- ./prog config.txt` | Run baseline plus fault calls up to 20 using `/tmp/run-*` capture/analysis directories |
 | `p101-error-path-walk -F open -- ./prog config.txt` | Walk only fault-capable calls named `open` |
 | `p101-error-path-walk -E 24 -- ./prog config.txt` | Inject errno `24` instead of the default `EIO` |
 | `p101-error-path-walk -O ../p101-observe/build-clang/p101-observe -- ./prog` | Use an in-tree p101-observe build |
-| `p101-error-path-walk -r ../p101-resource-tracker/build-clang/p101-resource-tracker -- ./prog` | Use an in-tree p101-resource-tracker build |
-| `p101-error-path-walk -t ../p101-trace/build-clang/p101-trace -- ./prog` | Use an in-tree p101-trace build |
-| `p101-error-path-walk -p ../p101-report/build-clang/p101-report -- ./prog` | Use an in-tree p101-report build |
+| `p101-error-path-walk -U ../../scripts/p101-run.py -Y ../../scripts/p101-analyze.py -- ./prog` | Use the in-tree shared runtime drivers |
+| `p101-error-path-walk -B ../../libraries/lib_tool_event/build-clang/p101-event-model -- ./prog` | Use an in-tree shared event-model build |
 
 The final summary groups injected runs by faulted wrapper name and resource
 finding count.

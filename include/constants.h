@@ -19,11 +19,12 @@
 #define CHILD_FAULT_MODE_ENV "P101_OBSERVE_CHILD_FAULT_MODE"
 #define CHILD_FAULT_AMOUNT_ENV "P101_OBSERVE_CHILD_FAULT_AMOUNT"
 #define CHILD_FAULT_REPEAT_ENV "P101_OBSERVE_CHILD_FAULT_REPEAT"
+#define DEFAULT_RUN_PATH "p101-run.py"
 #define DEFAULT_OBSERVE_PATH "p101-observe"
-#define DEFAULT_TRACKER_PATH "p101-resource-tracker"
-#define DEFAULT_CONCURRENCY_PATH "p101-sync-check"
-#define DEFAULT_TRACE_PATH "p101-trace"
-#define DEFAULT_REPORT_PATH "p101-report"
+#define DEFAULT_ANALYZE_PATH "p101-analyze.py"
+#define DEFAULT_MODEL_PATH "p101-event-model"
+#define RESOURCE_POLICY_SCHEMA "p101-resource-policy-findings-v1"
+#define ANALYSIS_POLICY_SCHEMA "p101-analysis-findings-v1"
 #define DEFAULT_LOG_PREFIX "/tmp/p101-error-path-walk"
 enum
 {
@@ -31,7 +32,8 @@ enum
     MSG_LEN              = 256,
     FAULT_LEN            = 32,
     READ_BUF_LEN         = 4096,
-    TRACKER_OUTPUT_LIMIT = 65536,
+    POLICY_INITIAL_CAPACITY = 4096,
+    POLICY_OUTPUT_LIMIT     = 64 * 1024 * 1024,
     REPORT_FILE_MODE     = 0600,
     EXEC_FAILURE         = 127,
     DEFAULT_MAX_FAILURES = 1024,

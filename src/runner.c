@@ -26,12 +26,12 @@ struct fault_group
 };
 
 static int    run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result);
-static int    run_p101_observe(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result);
+static int    run_p101_pipeline(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result);
 static void   update_fault_group(const struct p101_env *env, struct p101_error *err, struct fault_group groups[FAULT_GROUP_LIMIT], size_t *group_count, const struct run_result *result);
 static void   print_fault_groups(const struct p101_env *env, struct p101_error *err, const struct fault_group groups[FAULT_GROUP_LIMIT], size_t group_count);
-static size_t resource_finding_count(const struct run_result *result);
-static bool   resource_summary_unavailable(const struct run_result *result);
-static bool   observe_status_is_acceptable(int status);
+static size_t analysis_finding_count(const struct run_result *result);
+static bool   analysis_summary_unavailable(const struct run_result *result);
+static bool   pipeline_status_is_acceptable(int status);
 static void   clear_fault_environment(const struct p101_env *env, struct p101_error *err);
 static void   reset_run_environment(const struct p101_env *env, struct p101_error *err);
 
@@ -40,15 +40,15 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
     struct run_result  result;
     unsigned int       index;
     size_t             runs;
-    size_t             resource_findings;
+    size_t             findings;
     struct fault_group groups[FAULT_GROUP_LIMIT];
     size_t             group_count;
     bool               trouble;
 
     P101_TRACE_SCOPE(env);
-    runs              = 0;
-    resource_findings = 0;
-    group_count       = 0;
+    runs        = 0;
+    findings    = 0;
+    group_count = 0;
     p101_memset(env, groups, 0, sizeof(groups));
     trouble = false;
 
@@ -61,12 +61,12 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
     runs++;
     p101_error_path_walk_print_run_result(env, err, &result);
 
-    if((int)result.observe_ok == 0 || resource_summary_unavailable(&result) || (!p101_error_path_walk_status_is_success(result.status) && resource_finding_count(&result) == 0U))
+    if((int)result.pipeline_ok == 0 || analysis_summary_unavailable(&result) || (!p101_error_path_walk_status_is_success(result.status) && analysis_finding_count(&result) == 0U))
     {
         trouble = true;
     }
 
-    resource_findings += resource_finding_count(&result);
+    findings += analysis_finding_count(&result);
 
     for(index = 1; index <= args->max_failures && p101_error_has_no_error(err); index++)
     {
@@ -79,7 +79,7 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
         runs++;
         p101_error_path_walk_print_run_result(env, err, &result);
 
-        if((int)result.observe_ok == 0 || resource_summary_unavailable(&result))
+        if((int)result.pipeline_ok == 0 || analysis_summary_unavailable(&result))
         {
             trouble = true;
         }
@@ -90,11 +90,11 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
             break;
         }
 
-        resource_findings += resource_finding_count(&result);
+        findings += analysis_finding_count(&result);
         update_fault_group(env, err, groups, &group_count, &result);
     }
 
-    p101_printf(env, err, "p101-error-path-walk: %zu run%s, %zu resource finding%s.\n", runs, runs == 1 ? "" : "s", resource_findings, resource_findings == 1 ? "" : "s");
+    p101_printf(env, err, "p101-error-path-walk: %zu run%s, %zu policy finding%s.\n", runs, runs == 1 ? "" : "s", findings, findings == 1 ? "" : "s");
     print_fault_groups(env, err, groups, group_count);
 
 done:
@@ -105,7 +105,7 @@ done:
         return EXIT_TROUBLE;
     }
 
-    if(resource_findings > 0)
+    if(findings > 0)
     {
         return EXIT_FINDINGS;
     }
@@ -125,7 +125,7 @@ static void update_fault_group(const struct p101_env *env, struct p101_error *er
     }
 
     name     = (result->fault_name[0] == '\0') ? "?" : result->fault_name;
-    findings = resource_finding_count(result);
+    findings = analysis_finding_count(result);
     index    = *group_count;
 
     for(size_t i = 0; i < *group_count; i++)
@@ -167,26 +167,26 @@ static void print_fault_groups(const struct p101_env *env, struct p101_error *er
 
     for(size_t i = 0; i < group_count; i++)
     {
-        p101_printf(env, err, "  %s: %zu run%s, %zu resource finding%s\n", groups[i].name, groups[i].runs, groups[i].runs == 1U ? "" : "s", groups[i].findings, groups[i].findings == 1U ? "" : "s");
+        p101_printf(env, err, "  %s: %zu run%s, %zu policy finding%s\n", groups[i].name, groups[i].runs, groups[i].runs == 1U ? "" : "s", groups[i].findings, groups[i].findings == 1U ? "" : "s");
     }
 
 done:
     return;
 }
 
-static size_t resource_finding_count(const struct run_result *result)
+static size_t analysis_finding_count(const struct run_result *result)
 {
-    if(!result->resources.parsed)
+    if(!result->analysis.parsed)
     {
         return 0U;
     }
 
-    return result->resources.fd_leaks + result->resources.allocation_leaks + result->resources.bad_releases + result->resources.exec_inheritances + result->resources.generic_resource_leaks + result->resources.generic_bad_releases;
+    return result->analysis.findings;
 }
 
-static bool resource_summary_unavailable(const struct run_result *result)
+static bool analysis_summary_unavailable(const struct run_result *result)
 {
-    return (!result->resource_log_present || !result->resources.parsed || !result->resources.log_complete) != 0;
+    return (!result->resource_log_present || !result->resources.parsed || !result->resources.has_records || !result->analysis.parsed) != 0;
 }
 
 static int run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result)
@@ -247,9 +247,9 @@ static int run_one_case(const struct p101_env *env, struct p101_error *err, cons
         goto done;
     }
 
-    result->status     = run_p101_observe(env, err, args, result);
-    result->observe_ok = observe_status_is_acceptable(result->status);
-    result->fault_hit  = p101_error_path_walk_read_fault_hit(env, err, result->fault_log_path, result->fault_name);
+    result->status      = run_p101_pipeline(env, err, args, result);
+    result->pipeline_ok = pipeline_status_is_acceptable(result->status);
+    result->fault_hit   = p101_error_path_walk_read_fault_hit(env, err, result->fault_log_path, result->fault_name);
 
     if(p101_error_has_error(err))
     {
@@ -260,7 +260,12 @@ static int run_one_case(const struct p101_env *env, struct p101_error *err, cons
 
     if(result->resource_log_present && p101_error_path_walk_file_exists(env, result->resource_json_path))
     {
-        p101_error_path_walk_read_resource_json(env, err, result->resource_json_path, &result->resources);
+        p101_error_path_walk_read_policy_json(env, err, result->resource_json_path, RESOURCE_POLICY_SCHEMA, &result->resources);
+    }
+
+    if(p101_error_path_walk_file_exists(env, result->analysis_json_path))
+    {
+        p101_error_path_walk_read_policy_json(env, err, result->analysis_json_path, ANALYSIS_POLICY_SCHEMA, &result->analysis);
     }
 
 done:
@@ -274,52 +279,46 @@ done:
     return EXIT_SUCCESS;
 }
 
-static int run_p101_observe(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result)
+static int run_p101_pipeline(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result)
 {
     char  *tool_argv[MAX_TOOL_ARGS];
+    char   run_path[PATH_LEN];
+    char   run_dir[PATH_LEN];
     char   observe_path[PATH_LEN];
-    char   observe_dir[PATH_LEN];
-    char   tracker_path[PATH_LEN];
-    char   concurrency_path[PATH_LEN];
-    char   trace_path[PATH_LEN];
-    char   report_path[PATH_LEN];
-    char   output_option[]      = "-o";
-    char   tracker_option[]     = "-r";
-    char   concurrency_option[] = "-d";
-    char   trace_option[]       = "-t";
-    char   report_option[]      = "-p";
-    char   separator[]          = "--";
+    char   analyze_path[PATH_LEN];
+    char   model_path[PATH_LEN];
+    char   output_option[]  = "-o";
+    char   observe_option[] = "--observe-tool";
+    char   analyze_option[] = "--analyze-tool";
+    char   model_option[]   = "--model-tool";
+    char   separator[]      = "--";
     size_t index;
     size_t command_index;
     int    status;
 
     P101_TRACE_SCOPE(env);
     status = 0;
+    p101_strncpy(env, run_path, args->p101_run, sizeof(run_path) - 1U);
+    run_path[sizeof(run_path) - 1U] = '\0';
+    p101_strncpy(env, run_dir, result->run_dir, sizeof(run_dir) - 1U);
+    run_dir[sizeof(run_dir) - 1U] = '\0';
     p101_strncpy(env, observe_path, args->p101_observe, sizeof(observe_path) - 1U);
     observe_path[sizeof(observe_path) - 1U] = '\0';
-    p101_strncpy(env, observe_dir, result->observe_dir, sizeof(observe_dir) - 1U);
-    observe_dir[sizeof(observe_dir) - 1U] = '\0';
-    p101_strncpy(env, tracker_path, args->resource_tracker, sizeof(tracker_path) - 1U);
-    tracker_path[sizeof(tracker_path) - 1U] = '\0';
-    p101_strncpy(env, concurrency_path, args->p101_sync_check, sizeof(concurrency_path) - 1U);
-    concurrency_path[sizeof(concurrency_path) - 1U] = '\0';
-    p101_strncpy(env, trace_path, args->p101_trace, sizeof(trace_path) - 1U);
-    trace_path[sizeof(trace_path) - 1U] = '\0';
-    p101_strncpy(env, report_path, args->p101_report, sizeof(report_path) - 1U);
-    report_path[sizeof(report_path) - 1U] = '\0';
+    p101_strncpy(env, analyze_path, args->p101_analyze, sizeof(analyze_path) - 1U);
+    analyze_path[sizeof(analyze_path) - 1U] = '\0';
+    p101_strncpy(env, model_path, args->event_model, sizeof(model_path) - 1U);
+    model_path[sizeof(model_path) - 1U] = '\0';
 
     index              = 0;
-    tool_argv[index++] = observe_path;
+    tool_argv[index++] = run_path;
     tool_argv[index++] = output_option;
-    tool_argv[index++] = observe_dir;
-    tool_argv[index++] = tracker_option;
-    tool_argv[index++] = tracker_path;
-    tool_argv[index++] = concurrency_option;
-    tool_argv[index++] = concurrency_path;
-    tool_argv[index++] = trace_option;
-    tool_argv[index++] = trace_path;
-    tool_argv[index++] = report_option;
-    tool_argv[index++] = report_path;
+    tool_argv[index++] = run_dir;
+    tool_argv[index++] = observe_option;
+    tool_argv[index++] = observe_path;
+    tool_argv[index++] = analyze_option;
+    tool_argv[index++] = analyze_path;
+    tool_argv[index++] = model_option;
+    tool_argv[index++] = model_path;
     tool_argv[index++] = separator;
 
     command_index = 0U;
@@ -338,8 +337,8 @@ static int run_p101_observe(const struct p101_env *env, struct p101_error *err, 
     {
         struct p101_tool_run_options options;
 
-        options.stdout_path         = result->observe_stdout_path;
-        options.stderr_path         = result->observe_stderr_path;
+        options.stdout_path         = result->pipeline_stdout_path;
+        options.stderr_path         = result->pipeline_stderr_path;
         options.diagnostic_name     = "p101-error-path-walk";
         options.output_mode         = REPORT_FILE_MODE;
         options.child_setup         = NULL;
@@ -351,7 +350,7 @@ done:
     return status;
 }
 
-static bool observe_status_is_acceptable(int status)
+static bool pipeline_status_is_acceptable(int status)
 {
     bool acceptable;
 
@@ -401,22 +400,22 @@ int p101_error_path_walk_test_run_one_case(const struct p101_env *env, struct p1
 
 int p101_error_path_walk_test_run_observe(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result)
 {
-    return run_p101_observe(env, err, args, result);
+    return run_p101_pipeline(env, err, args, result);
 }
 
 bool p101_error_path_walk_test_observe_status(int status)
 {
-    return observe_status_is_acceptable(status);
+    return pipeline_status_is_acceptable(status);
 }
 
-size_t p101_error_path_walk_test_resource_finding_count(const struct run_result *result)
+size_t p101_error_path_walk_test_analysis_finding_count(const struct run_result *result)
 {
-    return resource_finding_count(result);
+    return analysis_finding_count(result);
 }
 
-bool p101_error_path_walk_test_resource_summary_unavailable(const struct run_result *result)
+bool p101_error_path_walk_test_analysis_summary_unavailable(const struct run_result *result)
 {
-    return resource_summary_unavailable(result);
+    return analysis_summary_unavailable(result);
 }
 
 void p101_error_path_walk_test_exercise_fault_groups(const struct p101_env *env, struct p101_error *err)
@@ -434,7 +433,9 @@ void p101_error_path_walk_test_exercise_fault_groups(const struct p101_env *env,
     update_fault_group(env, err, groups, &group_count, &result);
     result.fault_hit          = true;
     result.resources.parsed   = true;
-    result.resources.fd_leaks = 1U;
+    result.resources.findings = 1U;
+    result.analysis.parsed    = true;
+    result.analysis.findings  = 1U;
     update_fault_group(env, err, groups, &group_count, &result);
     update_fault_group(env, err, groups, &group_count, &result);
 

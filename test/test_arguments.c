@@ -75,13 +75,13 @@ static int inject_selected_failure(const struct p101_env *unused_env, const char
 
 static void test_parse_accepts_command_after_options(void)
 {
-    char            *argv[] = {"p101-error-path-walk", "-n", "3", "-l", "walk", "-O", "p101-observe", "-r", "p101-resource-tracker", "-d", "p101-sync-check", "-t", "p101-trace", "-p", "p101-report", "-E", "12", "-F", "open", "--", "prog", "arg", NULL};
+    char            *argv[] = {"p101-error-path-walk", "-n", "3", "-l", "walk", "-U", "p101-run.py", "-O", "p101-observe", "-Y", "p101-analyze.py", "-B", "p101-event-model", "-E", "12", "-F", "open", "--", "prog", "arg", NULL};
     struct arguments args;
 
     reset_getopt();
     p101_error_path_walk_arguments_init(env, &args);
 
-    p101_error_path_walk_parse_arguments(env, error, 22, argv, &args);
+    p101_error_path_walk_parse_arguments(env, error, 20, argv, &args);
     p101_error_path_walk_check_arguments(env, error, &args);
     p101_error_path_walk_convert_arguments(env, error, &args);
 
@@ -89,11 +89,10 @@ static void test_parse_accepts_command_after_options(void)
     TEST_ASSERT_EQUAL_UINT(3U, args.max_failures);
     TEST_ASSERT_EQUAL_INT(12, args.fault_errno);
     TEST_ASSERT_EQUAL_STRING("walk", args.log_prefix);
+    TEST_ASSERT_EQUAL_STRING("p101-run.py", args.p101_run);
     TEST_ASSERT_EQUAL_STRING("p101-observe", args.p101_observe);
-    TEST_ASSERT_EQUAL_STRING("p101-resource-tracker", args.resource_tracker);
-    TEST_ASSERT_EQUAL_STRING("p101-sync-check", args.p101_sync_check);
-    TEST_ASSERT_EQUAL_STRING("p101-trace", args.p101_trace);
-    TEST_ASSERT_EQUAL_STRING("p101-report", args.p101_report);
+    TEST_ASSERT_EQUAL_STRING("p101-analyze.py", args.p101_analyze);
+    TEST_ASSERT_EQUAL_STRING("p101-event-model", args.event_model);
     TEST_ASSERT_EQUAL_STRING("open", args.fault_name);
     TEST_ASSERT_EQUAL_STRING("prog", args.command_argv[0]);
     TEST_ASSERT_EQUAL_STRING("arg", args.command_argv[1]);
@@ -164,7 +163,7 @@ static void test_argument_validation_covers_null_empty_modes_and_short_names(voi
     p101_error_path_walk_check_arguments(env, error, &args);
     TEST_ASSERT_TRUE(p101_error_has_error(error));
 
-    for(size_t index = 0U; index < 5U; index++)
+    for(size_t index = 0U; index < 4U; index++)
     {
         const char **field;
 
@@ -174,19 +173,16 @@ static void test_argument_validation_covers_null_empty_modes_and_short_names(voi
         switch(index)
         {
             case 0:
-                field = &args.p101_observe;
+                field = &args.p101_run;
                 break;
             case 1:
-                field = &args.resource_tracker;
+                field = &args.p101_observe;
                 break;
             case 2:
-                field = &args.p101_trace;
-                break;
-            case 3:
-                field = &args.p101_sync_check;
+                field = &args.p101_analyze;
                 break;
             default:
-                field = &args.p101_report;
+                field = &args.event_model;
                 break;
         }
         *field = NULL;
@@ -199,19 +195,16 @@ static void test_argument_validation_covers_null_empty_modes_and_short_names(voi
         switch(index)
         {
             case 0:
-                args.p101_observe = "";
+                args.p101_run = "";
                 break;
             case 1:
-                args.resource_tracker = "";
+                args.p101_observe = "";
                 break;
             case 2:
-                args.p101_trace = "";
-                break;
-            case 3:
-                args.p101_sync_check = "";
+                args.p101_analyze = "";
                 break;
             default:
-                args.p101_report = "";
+                args.event_model = "";
                 break;
         }
         p101_error_path_walk_check_arguments(env, error, &args);
@@ -276,11 +269,11 @@ static void test_file_exists_checks_real_files(void)
     p101_error_path_walk_test_force_error_create_failure(false);
 }
 
-static void test_resource_summary_includes_generic_findings(void)
+static void test_resource_policy_summary(void)
 {
     static const char json[] =
-        "{\"schema\":\"p101-resource-tracker-findings-v3\",\"records\":3,\"fd_leaks\":0,\"allocation_leaks\":0,\"bad_releases\":0,\"exec_inheritances\":0,\"generic_resource_leaks\":1,\"generic_bad_releases\":2,\"malformed\":0,\"bad_version\":0,\"refused\":0,\"log_health\":{\"complete\":true}}\n";
-    struct resource_summary summary;
+        "{\"schema\":\"p101-resource-policy-findings-v1\",\"findings\":[{\"id\":\"P101-FD-001\"}],\"summary\":{\"records\":3,\"processes\":1,\"findings\":1,\"process_metrics\":[]}}\n";
+    struct policy_summary summary;
     FILE                   *stream;
     char                    path[] = "/tmp/p101-error-path-walk-resource-XXXXXX";
     int                     fd;
@@ -296,14 +289,12 @@ static void test_resource_summary_includes_generic_findings(void)
     TEST_ASSERT_EQUAL_INT(0, p101_fclose(env, error, stream));
     TEST_ASSERT_FALSE(p101_error_has_error(error));
 
-    p101_error_path_walk_read_resource_json(env, error, path, &summary);
+    p101_error_path_walk_read_policy_json(env, error, path, RESOURCE_POLICY_SCHEMA, &summary);
 
     TEST_ASSERT_FALSE(p101_error_has_error(error));
     TEST_ASSERT_TRUE(summary.parsed);
     TEST_ASSERT_EQUAL_UINT(3U, summary.records);
-    TEST_ASSERT_EQUAL_UINT(1U, summary.generic_resource_leaks);
-    TEST_ASSERT_EQUAL_UINT(2U, summary.generic_bad_releases);
-    TEST_ASSERT_TRUE(summary.log_complete);
+    TEST_ASSERT_EQUAL_UINT(1U, summary.findings);
 
     TEST_ASSERT_EQUAL_INT(0, p101_unlink(env, error, path));
 }
@@ -334,13 +325,15 @@ static void test_paths_cover_baseline_fault_custom_and_overflow(void)
     p101_error_path_walk_arguments_init(env, &args);
     p101_error_path_walk_make_log_paths(env, error, &args, 0U, &result);
     TEST_ASSERT_FALSE(p101_error_has_error(error));
-    TEST_ASSERT_NOT_NULL(strstr(result.observe_dir, "baseline.observe"));
+    TEST_ASSERT_NOT_NULL(strstr(result.run_dir, "baseline.run"));
+    TEST_ASSERT_NOT_NULL(strstr(result.capture_dir, "/capture"));
+    TEST_ASSERT_NOT_NULL(strstr(result.analysis_dir, "/analysis"));
     TEST_ASSERT_NOT_NULL(strstr(result.resource_log_path, "/resources.log"));
 
     args.log_prefix = "/tmp/custom-walk";
     p101_error_path_walk_make_log_paths(env, error, &args, 9U, &result);
     TEST_ASSERT_FALSE(p101_error_has_error(error));
-    TEST_ASSERT_NOT_NULL(strstr(result.observe_dir, "fault-9.observe"));
+    TEST_ASSERT_NOT_NULL(strstr(result.run_dir, "fault-9.run"));
 
     long_prefix = (char *)p101_malloc(env, error, PATH_LEN + 64U);
     TEST_ASSERT_NOT_NULL(long_prefix);
@@ -469,35 +462,32 @@ static void test_printer_covers_all_status_and_result_shapes(void)
     result.resource_log_present             = true;
     result.resources.parsed                 = true;
     result.resources.records                = 6U;
-    result.resources.fd_leaks               = 1U;
-    result.resources.allocation_leaks       = 1U;
-    result.resources.bad_releases           = 1U;
-    result.resources.exec_inheritances      = 1U;
-    result.resources.generic_resource_leaks = 1U;
-    result.resources.generic_bad_releases   = 1U;
+    result.resources.findings               = 6U;
+    result.analysis.parsed                  = true;
+    result.analysis.findings                = 8U;
     p101_error_path_walk_print_run_result(env, error, &result);
     p101_strncpy(env, result.fault_name, "read", sizeof(result.fault_name));
     p101_error_path_walk_print_run_result(env, error, &result);
     TEST_ASSERT_FALSE(p101_error_has_error(error));
 }
 
-static void test_resource_reader_handles_missing_and_capacity_limit(void)
+static void test_policy_reader_handles_missing_and_growth(void)
 {
-    struct resource_summary summary;
+    struct policy_summary summary;
     char                    path[PATH_LEN];
     char                   *large;
 
-    p101_error_path_walk_read_resource_json(env, error, "/tmp/p101-error-path-walk-missing-summary", &summary);
+    p101_error_path_walk_read_policy_json(env, error, "/tmp/p101-error-path-walk-missing-summary", RESOURCE_POLICY_SCHEMA, &summary);
     TEST_ASSERT_TRUE(p101_error_has_error(error));
     TEST_ASSERT_FALSE(summary.parsed);
     p101_error_reset(error);
 
-    large = (char *)p101_malloc(env, error, TRACKER_OUTPUT_LIMIT + 32U);
+    large = (char *)p101_malloc(env, error, POLICY_INITIAL_CAPACITY + 32U);
     TEST_ASSERT_NOT_NULL(large);
-    p101_memset(env, large, 'x', TRACKER_OUTPUT_LIMIT + 31U);
-    large[TRACKER_OUTPUT_LIMIT + 31U] = '\0';
+    p101_memset(env, large, 'x', POLICY_INITIAL_CAPACITY + 31U);
+    large[POLICY_INITIAL_CAPACITY + 31U] = '\0';
     write_text_file(path, large);
-    p101_error_path_walk_read_resource_json(env, error, path, &summary);
+    p101_error_path_walk_read_policy_json(env, error, path, RESOURCE_POLICY_SCHEMA, &summary);
     TEST_ASSERT_FALSE(p101_error_has_error(error));
     TEST_ASSERT_FALSE(summary.parsed);
     TEST_ASSERT_EQUAL_INT(0, p101_unlink(env, error, path));
@@ -507,13 +497,12 @@ static void test_resource_reader_handles_missing_and_capacity_limit(void)
 static void init_runner_arguments(struct arguments *args, char *const command[])
 {
     p101_error_path_walk_arguments_init(env, args);
-    args->p101_observe     = "/usr/bin/true";
-    args->resource_tracker = "tracker";
-    args->p101_sync_check  = "sync";
-    args->p101_trace       = "trace";
-    args->p101_report      = "report";
-    args->log_prefix       = "/tmp/p101-error-path-walk-unit";
-    args->command_argv     = command;
+    args->p101_run     = "/usr/bin/true";
+    args->p101_observe = "observe";
+    args->p101_analyze = "analyze";
+    args->event_model  = "model";
+    args->log_prefix   = "/tmp/p101-error-path-walk-unit";
+    args->command_argv = command;
 }
 
 static void test_runner_helpers_cover_status_resource_and_group_models(void)
@@ -526,27 +515,27 @@ static void test_runner_helpers_cover_status_resource_and_group_models(void)
     TEST_ASSERT_FALSE(p101_error_path_walk_test_observe_status(EXIT_TROUBLE << 8));
     TEST_ASSERT_FALSE(p101_error_path_walk_test_observe_status(SIGTERM));
 
-    TEST_ASSERT_EQUAL_UINT(0U, p101_error_path_walk_test_resource_finding_count(&result));
-    TEST_ASSERT_TRUE(p101_error_path_walk_test_resource_summary_unavailable(&result));
-    result.resource_log_present             = true;
-    result.resources.parsed                 = true;
-    result.resources.log_complete           = true;
-    result.resources.fd_leaks               = 1U;
-    result.resources.allocation_leaks       = 2U;
-    result.resources.bad_releases           = 3U;
-    result.resources.exec_inheritances      = 4U;
-    result.resources.generic_resource_leaks = 5U;
-    result.resources.generic_bad_releases   = 6U;
-    TEST_ASSERT_EQUAL_UINT(21U, p101_error_path_walk_test_resource_finding_count(&result));
-    TEST_ASSERT_FALSE(p101_error_path_walk_test_resource_summary_unavailable(&result));
+    TEST_ASSERT_EQUAL_UINT(0U, p101_error_path_walk_test_analysis_finding_count(&result));
+    TEST_ASSERT_TRUE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
+    result.resource_log_present = true;
+    result.resources.parsed     = true;
+    TEST_ASSERT_TRUE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
+    result.resources.has_records = true;
+    result.analysis.parsed   = true;
+    result.analysis.findings = 21U;
+    TEST_ASSERT_EQUAL_UINT(21U, p101_error_path_walk_test_analysis_finding_count(&result));
+    TEST_ASSERT_FALSE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
     result.resource_log_present = false;
-    TEST_ASSERT_TRUE(p101_error_path_walk_test_resource_summary_unavailable(&result));
+    TEST_ASSERT_TRUE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
     result.resource_log_present = true;
     result.resources.parsed     = false;
-    TEST_ASSERT_TRUE(p101_error_path_walk_test_resource_summary_unavailable(&result));
-    result.resources.parsed       = true;
-    result.resources.log_complete = false;
-    TEST_ASSERT_TRUE(p101_error_path_walk_test_resource_summary_unavailable(&result));
+    TEST_ASSERT_TRUE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
+    result.resources.parsed = true;
+    result.resources.has_records = false;
+    TEST_ASSERT_TRUE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
+    result.resources.has_records = true;
+    result.analysis.parsed  = false;
+    TEST_ASSERT_TRUE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
 
     p101_error_path_walk_test_exercise_fault_groups(env, error);
     TEST_ASSERT_FALSE(p101_error_has_error(error));
@@ -565,9 +554,9 @@ static void test_run_observe_covers_argument_flush_fork_wait_and_child_failures(
     p101_memset(env, &result, 0, sizeof(result));
     p101_snprintf(env, error, stdout_path, sizeof(stdout_path), "/tmp/p101-error-path-walk-child-%ld.out", (long)p101_getpid(env));
     p101_snprintf(env, error, stderr_path, sizeof(stderr_path), "/tmp/p101-error-path-walk-child-%ld.err", (long)p101_getpid(env));
-    p101_strncpy(env, result.observe_stdout_path, stdout_path, sizeof(result.observe_stdout_path));
-    p101_strncpy(env, result.observe_stderr_path, stderr_path, sizeof(result.observe_stderr_path));
-    p101_strncpy(env, result.observe_dir, "/tmp/p101-error-path-walk-observe", sizeof(result.observe_dir));
+    p101_strncpy(env, result.pipeline_stdout_path, stdout_path, sizeof(result.pipeline_stdout_path));
+    p101_strncpy(env, result.pipeline_stderr_path, stderr_path, sizeof(result.pipeline_stderr_path));
+    p101_strncpy(env, result.run_dir, "/tmp/p101-error-path-walk-run", sizeof(result.run_dir));
 
     TEST_ASSERT_EQUAL_INT(0, p101_error_path_walk_test_run_observe(env, error, &args, &result));
     TEST_ASSERT_FALSE(p101_error_has_error(error));
@@ -603,12 +592,12 @@ static void test_run_observe_covers_argument_flush_fork_wait_and_child_failures(
     p101_error_reset(error);
 
     p101_env_set_fault_injector(env, NULL, NULL);
-    args.p101_observe = "/tmp/p101-error-path-walk-no-such-observer";
+    args.p101_run = "/tmp/p101-error-path-walk-no-such-runner";
     TEST_ASSERT_EQUAL_INT(EXEC_FAILURE << 8, p101_error_path_walk_test_run_observe(env, error, &args, &result));
     TEST_ASSERT_FALSE(p101_error_has_error(error));
 
-    args.p101_observe = "/usr/bin/true";
-    fault.call_name   = "open";
+    args.p101_run   = "/usr/bin/true";
+    fault.call_name = "open";
     fault.fail_at     = 1U;
     fault.matches     = 0U;
     p101_env_set_fault_injector(env, inject_selected_failure, &fault);
@@ -713,14 +702,16 @@ static void test_run_one_case_and_run_cover_error_boundaries(void)
         p101_snprintf(env, error, unique_prefix, sizeof(unique_prefix), "/tmp/p101-error-path-walk-malformed-%ld", (long)p101_getpid(env));
         args.log_prefix = unique_prefix;
         p101_error_path_walk_make_log_paths(env, error, &args, 0U, &result);
-        TEST_ASSERT_EQUAL_INT(0, p101_mkdir(env, error, result.observe_dir, 0700));
+        TEST_ASSERT_EQUAL_INT(0, p101_mkdir(env, error, result.run_dir, 0700));
+        TEST_ASSERT_EQUAL_INT(0, p101_mkdir(env, error, result.capture_dir, 0700));
         write_text_file(invalid_path, "P101FAULT\t2\tbad\n");
         TEST_ASSERT_EQUAL_INT(0, p101_rename(env, error, invalid_path, result.fault_log_path));
         TEST_ASSERT_EQUAL_INT(EXIT_TROUBLE, p101_error_path_walk_test_run_one_case(env, error, &args, 0U, &result));
         TEST_ASSERT_TRUE(p101_error_has_error(error));
         p101_error_reset(error);
         TEST_ASSERT_EQUAL_INT(0, p101_unlink(env, error, result.fault_log_path));
-        TEST_ASSERT_EQUAL_INT(0, p101_rmdir(env, error, result.observe_dir));
+        TEST_ASSERT_EQUAL_INT(0, p101_rmdir(env, error, result.capture_dir));
+        TEST_ASSERT_EQUAL_INT(0, p101_rmdir(env, error, result.run_dir));
     }
 }
 
@@ -733,11 +724,11 @@ int main(void)
     RUN_TEST(test_parse_rejects_missing_command);
     RUN_TEST(test_argument_validation_covers_null_empty_modes_and_short_names);
     RUN_TEST(test_file_exists_checks_real_files);
-    RUN_TEST(test_resource_summary_includes_generic_findings);
+    RUN_TEST(test_resource_policy_summary);
     RUN_TEST(test_paths_cover_baseline_fault_custom_and_overflow);
     RUN_TEST(test_fault_log_parser_covers_supported_and_invalid_records);
     RUN_TEST(test_printer_covers_all_status_and_result_shapes);
-    RUN_TEST(test_resource_reader_handles_missing_and_capacity_limit);
+    RUN_TEST(test_policy_reader_handles_missing_and_growth);
     RUN_TEST(test_runner_helpers_cover_status_resource_and_group_models);
     RUN_TEST(test_run_observe_covers_argument_flush_fork_wait_and_child_failures);
     RUN_TEST(test_run_one_case_and_run_cover_error_boundaries);

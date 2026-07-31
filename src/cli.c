@@ -20,11 +20,10 @@ void p101_error_path_walk_arguments_init(const struct p101_env *env, struct argu
     P101_TRACE_SCOPE(env);
     p101_memset(env, args, 0, sizeof(*args));
     args->max_failures       = DEFAULT_MAX_FAILURES;
+    args->p101_run           = DEFAULT_RUN_PATH;
     args->p101_observe       = DEFAULT_OBSERVE_PATH;
-    args->resource_tracker   = DEFAULT_TRACKER_PATH;
-    args->p101_sync_check    = DEFAULT_CONCURRENCY_PATH;
-    args->p101_trace         = DEFAULT_TRACE_PATH;
-    args->p101_report        = DEFAULT_REPORT_PATH;
+    args->p101_analyze       = DEFAULT_ANALYZE_PATH;
+    args->event_model        = DEFAULT_MODEL_PATH;
     args->fault_errno        = EIO;
     args->fault_mode         = "error";
     args->fault_amount       = 1U;
@@ -44,7 +43,7 @@ void p101_error_path_walk_parse_arguments(const struct p101_env *env, struct p10
         p101_error_path_walk_usage(env, err, argv[0], EXIT_SUCCESS, NULL);
     }
 
-    while((opt = p101_getopt(env, argc, argv, ":hvn:l:O:r:d:t:p:E:F:M:A:R:")) != -1 && p101_error_has_no_error(err))
+    while((opt = p101_getopt(env, argc, argv, ":hvn:l:U:O:Y:B:E:F:M:A:R:")) != -1 && p101_error_has_no_error(err))
     {
         handle_option(env, err, args, opt, optarg, optopt, argv[0]);
     }
@@ -77,20 +76,17 @@ static void handle_option(const struct p101_env *env, struct p101_error *err, st
         case 'l':
             destination = &args->log_prefix;
             break;
+        case 'U':
+            destination = &args->p101_run;
+            break;
         case 'O':
             destination = &args->p101_observe;
             break;
-        case 'r':
-            destination = &args->resource_tracker;
+        case 'Y':
+            destination = &args->p101_analyze;
             break;
-        case 'd':
-            destination = &args->p101_sync_check;
-            break;
-        case 't':
-            destination = &args->p101_trace;
-            break;
-        case 'p':
-            destination = &args->p101_report;
+        case 'B':
+            destination = &args->event_model;
             break;
         case 'E':
             destination = &args->fault_errno_str;
@@ -161,33 +157,27 @@ void p101_error_path_walk_check_arguments(const struct p101_env *env, struct p10
         goto done;
     }
 
+    if(required_text_missing(args->p101_run))
+    {
+        P101_ERROR_RAISE_USER(err, "The p101-run path must not be empty.", ERR_USAGE);
+        goto done;
+    }
+
     if(required_text_missing(args->p101_observe))
     {
         P101_ERROR_RAISE_USER(err, "The p101-observe path must not be empty.", ERR_USAGE);
         goto done;
     }
 
-    if(required_text_missing(args->resource_tracker))
+    if(required_text_missing(args->p101_analyze))
     {
-        P101_ERROR_RAISE_USER(err, "The p101-resource-tracker path must not be empty.", ERR_USAGE);
+        P101_ERROR_RAISE_USER(err, "The p101-analyze path must not be empty.", ERR_USAGE);
         goto done;
     }
 
-    if(required_text_missing(args->p101_trace))
+    if(required_text_missing(args->event_model))
     {
-        P101_ERROR_RAISE_USER(err, "The p101-trace path must not be empty.", ERR_USAGE);
-        goto done;
-    }
-
-    if(required_text_missing(args->p101_sync_check))
-    {
-        P101_ERROR_RAISE_USER(err, "The p101-sync-check path must not be empty.", ERR_USAGE);
-        goto done;
-    }
-
-    if(required_text_missing(args->p101_report))
-    {
-        P101_ERROR_RAISE_USER(err, "The p101-report path must not be empty.", ERR_USAGE);
+        P101_ERROR_RAISE_USER(err, "The p101-event-model path must not be empty.", ERR_USAGE);
         goto done;
     }
 
@@ -307,23 +297,21 @@ _Noreturn void p101_error_path_walk_usage(const struct p101_env *env, struct p10
         p101_fprintf(env, err, stderr, "%s\n\n", message);
     }
 
-    p101_fprintf(
-        env,
-        err,
-        stderr,
-        "Usage: %s [-h] [-v] [-n <count>] [-l <prefix>] [-O <p101-observe>] [-r <p101-resource-tracker>] [-d <p101-sync-check>] [-t <p101-trace>] [-p <p101-report>] [-E <errno>] [-F <name>] [-M <mode>] [-A <amount>] [-R <count>] -- <command> [args...]\n",
-        program_name);
+    p101_fprintf(env,
+                 err,
+                 stderr,
+                 "Usage: %s [-h] [-v] [-n <count>] [-l <prefix>] [-U <p101-run>] [-O <p101-observe>] [-Y <p101-analyze>] [-B <p101-event-model>] [-E <errno>] [-F <name>] [-M <mode>] [-A <amount>] [-R <count>] -- <command> [args...]\n",
+                 program_name);
     p101_fputs(env, err, "Options:\n", stderr);
     p101_fputs(env, err, "  -h                      Display this help message and exit\n", stderr);
     p101_fputs(env, err, "  -v                      Enable verbose p101 tracing in the walker\n", stderr);
     p101_fputs(env, err, "  -n <count>              Maximum injected failures to try after the baseline\n", stderr);
     p101_fputs(env, err, "                          (default: 1024, stops early when no fault fires)\n", stderr);
-    p101_fputs(env, err, "  -l <prefix>             Prefix for per-run observe directories and fault logs\n", stderr);
+    p101_fputs(env, err, "  -l <prefix>             Prefix for per-case capture and analysis directories\n", stderr);
+    p101_fputs(env, err, "  -U <p101-run>           Shared capture/analyze driver (default: PATH lookup)\n", stderr);
     p101_fputs(env, err, "  -O <p101-observe>       p101-observe executable (default: PATH lookup)\n", stderr);
-    p101_fputs(env, err, "  -r <p101-resource-tracker>   p101-resource-tracker executable (default: PATH lookup)\n", stderr);
-    p101_fputs(env, err, "  -d <p101-sync-check>   p101-sync-check executable (default: PATH lookup)\n", stderr);
-    p101_fputs(env, err, "  -t <p101-trace>         p101-trace executable (default: PATH lookup)\n", stderr);
-    p101_fputs(env, err, "  -p <p101-report>        p101-report executable (default: PATH lookup)\n", stderr);
+    p101_fputs(env, err, "  -Y <p101-analyze>       Shared policy-analysis driver (default: PATH lookup)\n", stderr);
+    p101_fputs(env, err, "  -B <p101-event-model>   Shared event-model builder (default: PATH lookup)\n", stderr);
     p101_fputs(env, err, "  -E <errno>              errno injected by failed wrappers (default: EIO)\n", stderr);
     p101_fputs(env, err, "  -F <name>               Only count/fail matching wrapper names, e.g. open\n", stderr);
     p101_fputs(env, err, "  -M <mode>               error, eintr, timeout, or short (default: error)\n", stderr);

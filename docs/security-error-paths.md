@@ -20,11 +20,12 @@ fail p101 call #3
 ...
 ```
 
-Each injected run is observed by `p101-observe`, so the same run produces:
+Each injected run follows the same capture/model/policy pipeline as `p101 run`,
+so the same run produces:
 
 - a resource log;
 - a call log;
-- a descriptor/allocation report;
+- a normalized resource-policy report;
 - a call tree;
 - a correlated report that ties a finding back to a source site.
 
@@ -47,7 +48,8 @@ and more like a debugger for rarely executed branches.
 
 ## Finding classes
 
-Use the stable diagnostic IDs emitted by `p101-report` when writing assignments:
+Use the stable diagnostic IDs emitted by the shared analysis policies when
+writing assignments:
 
 - `P101-FD-001`: leaked descriptor
 - `P101-FD-002`: double close

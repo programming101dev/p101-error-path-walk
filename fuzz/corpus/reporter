@@ -1,1 +1,1 @@
--p p101-report -- ./prog
+-Y p101-analyze.py -- ./prog

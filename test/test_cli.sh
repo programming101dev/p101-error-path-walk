@@ -23,7 +23,7 @@ expect_status() {
   fi
 }
 
-cat >"$work/fake-observe" <<'EOF'
+cat >"$work/fake-run" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -31,30 +31,39 @@ out=
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -o) out="$2"; shift 2 ;;
+    --observe-tool|--analyze-tool|--model-tool) shift 2 ;;
     --) shift; break ;;
     *) shift ;;
   esac
 done
 
-mkdir -p "$out"
-: >"$out/resources.log"
-: >"$out/calls.log"
+mkdir -p "$out/capture" "$out/analysis"
+: >"$out/capture/resources.log"
+: >"$out/capture/calls.log"
 
 case "${FAKE_SUMMARY_MODE:-clean}" in
   clean)
-    printf '%s\n' '{"schema":"p101-resource-tracker-findings-v3","records":1,"fd_leaks":0,"allocation_leaks":0,"bad_releases":0,"exec_inheritances":0,"generic_resource_leaks":0,"generic_bad_releases":0,"malformed":0,"bad_version":0,"refused":0,"log_health":{"complete":true}}' >"$out/resource-report.json"
+    printf '%s\n' '{"schema":"p101-resource-policy-findings-v1","findings":[],"summary":{"records":1,"processes":1,"findings":0,"process_metrics":[]}}' >"$out/analysis/resource-report.json"
+    printf '%s\n' '{"schema":"p101-analysis-findings-v1","findings":[],"summary":{"findings":0,"resource_findings":0,"synchronization_findings":0,"trace_findings":0}}' >"$out/analysis/correlated-report.json"
     ;;
   findings)
-    printf '%s\n' '{"schema":"p101-resource-tracker-findings-v3","records":1,"fd_leaks":1,"allocation_leaks":1,"bad_releases":1,"exec_inheritances":1,"generic_resource_leaks":1,"generic_bad_releases":1,"malformed":0,"bad_version":0,"refused":0,"log_health":{"complete":true}}' >"$out/resource-report.json"
+    printf '%s\n' '{"schema":"p101-resource-policy-findings-v1","findings":[{"id":"P101-FD-001"}],"summary":{"records":1,"processes":1,"findings":1,"process_metrics":[]}}' >"$out/analysis/resource-report.json"
+    printf '%s\n' '{"schema":"p101-analysis-findings-v1","findings":[{"id":"P101-FD-001"}],"summary":{"findings":1,"resource_findings":1,"synchronization_findings":0,"trace_findings":0}}' >"$out/analysis/correlated-report.json"
+    ;;
+  sync-findings)
+    printf '%s\n' '{"schema":"p101-resource-policy-findings-v1","findings":[],"summary":{"records":1,"processes":1,"findings":0,"process_metrics":[]}}' >"$out/analysis/resource-report.json"
+    printf '%s\n' '{"schema":"p101-analysis-findings-v1","findings":[{"id":"P101-SYNC-001"}],"summary":{"findings":1,"resource_findings":0,"synchronization_findings":1,"trace_findings":0}}' >"$out/analysis/correlated-report.json"
     ;;
   incomplete)
-    printf '%s\n' '{"schema":"p101-resource-tracker-findings-v3","records":1,"fd_leaks":0,"allocation_leaks":0,"bad_releases":0,"exec_inheritances":0,"generic_resource_leaks":0,"generic_bad_releases":0,"malformed":0,"bad_version":0,"refused":0,"log_health":{"complete":false}}' >"$out/resource-report.json"
+    printf '%s\n' '{"schema":"p101-resource-policy-findings-v1","findings":[],"summary":{"records":1}}' >"$out/analysis/resource-report.json"
+    printf '%s\n' '{"schema":"p101-analysis-findings-v1","findings":[],"summary":{"findings":0}}' >"$out/analysis/correlated-report.json"
     ;;
   missing)
-    rm -f "$out/resources.log" "$out/resource-report.json"
+    rm -f "$out/capture/resources.log" "$out/analysis/resource-report.json" "$out/analysis/correlated-report.json"
     ;;
   nojson)
-    rm -f "$out/resource-report.json"
+    rm -f "$out/analysis/resource-report.json"
+    printf '%s\n' '{"schema":"p101-analysis-findings-v1","findings":[],"summary":{"findings":0}}' >"$out/analysis/correlated-report.json"
     ;;
 esac
 
@@ -64,23 +73,24 @@ if [ -n "${P101_OBSERVE_CHILD_FAULT_CALL:-}" ] && [ "${P101_OBSERVE_CHILD_FAULT_
     >"$P101_OBSERVE_CHILD_FAULT_LOG"
 fi
 
-exit "${FAKE_OBSERVE_STATUS:-0}"
+exit "${FAKE_PIPELINE_STATUS:-0}"
 EOF
-chmod +x "$work/fake-observe"
+chmod +x "$work/fake-run"
 
-base=("$tool" -O "$work/fake-observe" -r tracker -d sync -t trace -p report -l "$work/walk")
+base=("$tool" -U "$work/fake-run" -O observe -Y analyze -B model -l "$work/walk")
 
 expect_status 0 "$tool" --help
 expect_status 0 "$tool" -h
 expect_status 0 env FAKE_SUMMARY_MODE=clean FAKE_FAULTS=1 "${base[@]}" -n 2 -- true
 expect_status 1 env FAKE_SUMMARY_MODE=findings FAKE_FAULTS=1 "${base[@]}" -n 1 -F open -- true
-expect_status 1 env FAKE_SUMMARY_MODE=findings FAKE_OBSERVE_STATUS=1 "${base[@]}" -n 0 -- true
+expect_status 1 env FAKE_SUMMARY_MODE=sync-findings FAKE_PIPELINE_STATUS=1 "${base[@]}" -n 0 -- true
+expect_status 1 env FAKE_SUMMARY_MODE=findings FAKE_PIPELINE_STATUS=1 "${base[@]}" -n 0 -- true
 expect_status 2 env FAKE_SUMMARY_MODE=incomplete "${base[@]}" -n 0 -- true
 expect_status 2 env FAKE_SUMMARY_MODE=incomplete FAKE_FAULTS=1 "${base[@]}" -n 1 -- true
 expect_status 2 env FAKE_SUMMARY_MODE=missing "${base[@]}" -n 0 -- true
 expect_status 2 env FAKE_SUMMARY_MODE=nojson "${base[@]}" -n 0 -- true
-expect_status 2 env FAKE_SUMMARY_MODE=clean FAKE_OBSERVE_STATUS=1 "${base[@]}" -n 0 -- true
-expect_status 2 env FAKE_SUMMARY_MODE=clean FAKE_OBSERVE_STATUS=2 FAKE_FAULTS=1 "${base[@]}" -n 1 -- true
+expect_status 2 env FAKE_SUMMARY_MODE=clean FAKE_PIPELINE_STATUS=1 "${base[@]}" -n 0 -- true
+expect_status 2 env FAKE_SUMMARY_MODE=clean FAKE_PIPELINE_STATUS=2 FAKE_FAULTS=1 "${base[@]}" -n 1 -- true
 expect_status 0 env FAKE_SUMMARY_MODE=clean "${base[@]}" -v -n 0 -E 5 -F read -M short -A 2 -R 2 -- true
 
 expect_status 2 "$tool"
@@ -93,11 +103,10 @@ expect_status 2 "$tool" -E 0 -- true
 expect_status 2 "$tool" -A nope -- true
 expect_status 2 "$tool" -R 0 -- true
 expect_status 2 "$tool" -l "" -- true
+expect_status 2 "$tool" -U "" -- true
 expect_status 2 "$tool" -O "" -- true
-expect_status 2 "$tool" -r "" -- true
-expect_status 2 "$tool" -d "" -- true
-expect_status 2 "$tool" -t "" -- true
-expect_status 2 "$tool" -p "" -- true
+expect_status 2 "$tool" -Y "" -- true
+expect_status 2 "$tool" -B "" -- true
 expect_status 2 "$tool" -F "" -- true
 expect_status 2 "$tool" -M bogus -- true
 expect_status 2 "$tool" -M short -- true

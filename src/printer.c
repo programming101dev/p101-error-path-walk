@@ -38,28 +38,27 @@ void p101_error_path_walk_print_run_result(const struct p101_env *env, struct p1
         }
     }
 
-    p101_fputs(env, err, "observe_", stdout);
+    p101_fputs(env, err, "pipeline_", stdout);
     p101_error_path_walk_print_status_text(env, err, result->status);
 
     if(result->resource_log_present && result->resources.parsed)
     {
-        p101_printf(env,
-                    err,
-                    " resources(records=%zu fd_leaks=%zu allocation_leaks=%zu bad_releases=%zu exec_inheritances=%zu generic_resource_leaks=%zu generic_bad_releases=%zu)",
-                    result->resources.records,
-                    result->resources.fd_leaks,
-                    result->resources.allocation_leaks,
-                    result->resources.bad_releases,
-                    result->resources.exec_inheritances,
-                    result->resources.generic_resource_leaks,
-                    result->resources.generic_bad_releases);
+        p101_printf(env, err, " resources(records=%zu findings=%zu)", result->resources.records, result->resources.findings);
     }
     else
     {
         p101_fputs(env, err, " resources(unavailable)", stdout);
     }
+    if(result->analysis.parsed)
+    {
+        p101_printf(env, err, " analysis(findings=%zu)", result->analysis.findings);
+    }
+    else
+    {
+        p101_fputs(env, err, " analysis(unavailable)", stdout);
+    }
 
-    p101_printf(env, err, " observe_dir=%s resource_log=%s call_log=%s report=%s\n", result->observe_dir, result->resource_log_path, result->call_log_path, result->report_path);
+    p101_printf(env, err, " run_dir=%s capture=%s analysis=%s resource_log=%s call_log=%s report=%s\n", result->run_dir, result->capture_dir, result->analysis_dir, result->resource_log_path, result->call_log_path, result->report_path);
 }
 
 void p101_error_path_walk_print_status_text(const struct p101_env *env, struct p101_error *err, int status)

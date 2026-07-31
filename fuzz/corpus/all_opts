@@ -1,1 +1,1 @@
--v -n 20 -l resources.log -r p101-resource-tracker -p p101-report -- ./prog arg
+-v -n 20 -l resources.log -U p101-run.py -O p101-observe -Y p101-analyze.py -B p101-event-model -- ./prog arg

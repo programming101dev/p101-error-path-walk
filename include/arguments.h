@@ -18,11 +18,10 @@ struct arguments
     const char  *fault_amount_str;
     const char  *fault_repeat_str;
     const char  *log_prefix;
+    const char  *p101_run;
     const char  *p101_observe;
-    const char  *resource_tracker;
-    const char  *p101_sync_check;
-    const char  *p101_trace;
-    const char  *p101_report;
+    const char  *p101_analyze;
+    const char  *event_model;
     char *const *command_argv;
     unsigned int max_failures;
     int          fault_errno;

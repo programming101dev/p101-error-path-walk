@@ -26,26 +26,29 @@ void p101_error_path_walk_make_log_paths(const struct p101_env *env, struct p101
 
     if(fault_index == 0)
     {
-        p101_snprintf(env, err, result->observe_dir, PATH_LEN, "%s-%ld-baseline.observe", prefix, pid_value);
-        p101_snprintf(env, err, result->observe_stdout_path, PATH_LEN, "%s-%ld-baseline.observe.stdout.txt", prefix, pid_value);
-        p101_snprintf(env, err, result->observe_stderr_path, PATH_LEN, "%s-%ld-baseline.observe.stderr.txt", prefix, pid_value);
+        p101_snprintf(env, err, result->run_dir, PATH_LEN, "%s-%ld-baseline.run", prefix, pid_value);
+        p101_snprintf(env, err, result->pipeline_stdout_path, PATH_LEN, "%s-%ld-baseline.run.stdout.txt", prefix, pid_value);
+        p101_snprintf(env, err, result->pipeline_stderr_path, PATH_LEN, "%s-%ld-baseline.run.stderr.txt", prefix, pid_value);
     }
     else
     {
-        p101_snprintf(env, err, result->observe_dir, PATH_LEN, "%s-%ld-fault-%u.observe", prefix, pid_value, fault_index);
-        p101_snprintf(env, err, result->observe_stdout_path, PATH_LEN, "%s-%ld-fault-%u.observe.stdout.txt", prefix, pid_value, fault_index);
-        p101_snprintf(env, err, result->observe_stderr_path, PATH_LEN, "%s-%ld-fault-%u.observe.stderr.txt", prefix, pid_value, fault_index);
+        p101_snprintf(env, err, result->run_dir, PATH_LEN, "%s-%ld-fault-%u.run", prefix, pid_value, fault_index);
+        p101_snprintf(env, err, result->pipeline_stdout_path, PATH_LEN, "%s-%ld-fault-%u.run.stdout.txt", prefix, pid_value, fault_index);
+        p101_snprintf(env, err, result->pipeline_stderr_path, PATH_LEN, "%s-%ld-fault-%u.run.stderr.txt", prefix, pid_value, fault_index);
     }
 
-    result->observe_dir[PATH_LEN - 1]         = '\0';
-    result->observe_stdout_path[PATH_LEN - 1] = '\0';
-    result->observe_stderr_path[PATH_LEN - 1] = '\0';
+    result->run_dir[PATH_LEN - 1]              = '\0';
+    result->pipeline_stdout_path[PATH_LEN - 1] = '\0';
+    result->pipeline_stderr_path[PATH_LEN - 1] = '\0';
 
-    join_path(env, err, result->resource_log_path, result->observe_dir, "resources.log");
-    join_path(env, err, result->call_log_path, result->observe_dir, "calls.log");
-    join_path(env, err, result->fault_log_path, result->observe_dir, "fault.log");
-    join_path(env, err, result->resource_json_path, result->observe_dir, "resource-report.json");
-    join_path(env, err, result->report_path, result->observe_dir, "correlated-report.txt");
+    join_path(env, err, result->capture_dir, result->run_dir, "capture");
+    join_path(env, err, result->analysis_dir, result->run_dir, "analysis");
+    join_path(env, err, result->resource_log_path, result->capture_dir, "resources.log");
+    join_path(env, err, result->call_log_path, result->capture_dir, "calls.log");
+    join_path(env, err, result->fault_log_path, result->capture_dir, "fault.log");
+    join_path(env, err, result->resource_json_path, result->analysis_dir, "resource-report.json");
+    join_path(env, err, result->analysis_json_path, result->analysis_dir, "correlated-report.json");
+    join_path(env, err, result->report_path, result->analysis_dir, "correlated-report.txt");
 }
 
 static void join_path(const struct p101_env *env, struct p101_error *err, char destination[PATH_LEN], const char *dir, const char *name)

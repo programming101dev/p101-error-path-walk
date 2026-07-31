@@ -6,6 +6,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-void p101_error_path_walk_read_resource_json(const struct p101_env *env, struct p101_error *err, const char *path, struct resource_summary *summary);
+void p101_error_path_walk_read_policy_json(const struct p101_env *env, struct p101_error *err, const char *path, const char *schema, struct policy_summary *summary);
 
 #endif    // P101_ERROR_PATH_WALK_RESOURCE_H
