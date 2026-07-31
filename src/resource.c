@@ -5,11 +5,21 @@
 #include <p101_c/p101_string.h>
 #include <stdio.h>
 
+#ifdef P101_ERROR_PATH_WALK_TESTING
+static size_t test_policy_output_limit = POLICY_OUTPUT_LIMIT;
+
+void p101_error_path_walk_test_set_policy_output_limit(size_t limit)
+{
+    test_policy_output_limit = limit;
+}
+#endif
+
 void p101_error_path_walk_read_policy_json(const struct p101_env *env, struct p101_error *err, const char *path, const char *schema, struct policy_summary *summary)
 {
     FILE  *stream;
     char  *buffer;
     size_t capacity;
+    size_t output_limit;
     size_t used;
 
     P101_TRACE_SCOPE(env);
@@ -17,7 +27,12 @@ void p101_error_path_walk_read_policy_json(const struct p101_env *env, struct p1
     stream   = p101_fopen(env, err, path, "r");
     buffer   = NULL;
     capacity = POLICY_INITIAL_CAPACITY;
-    used     = 0;
+#ifdef P101_ERROR_PATH_WALK_TESTING
+    output_limit = test_policy_output_limit;
+#else
+    output_limit = POLICY_OUTPUT_LIMIT;
+#endif
+    used = 0;
 
     if(stream == NULL)
     {
@@ -30,7 +45,7 @@ void p101_error_path_walk_read_policy_json(const struct p101_env *env, struct p1
     }
     buffer[0] = '\0';
 
-    while(used < POLICY_OUTPUT_LIMIT - 1U)
+    while(used < output_limit - 1U)
     {
         const char *line;
 
@@ -39,12 +54,8 @@ void p101_error_path_walk_read_policy_json(const struct p101_env *env, struct p1
             char  *resized;
             size_t next_capacity;
 
-            next_capacity = capacity * 2U;
-            if(next_capacity > POLICY_OUTPUT_LIMIT)
-            {
-                next_capacity = POLICY_OUTPUT_LIMIT;
-            }
-            resized = (char *)p101_realloc(env, err, buffer, next_capacity);
+            next_capacity = capacity > output_limit / 2U ? output_limit : capacity * 2U;
+            resized       = (char *)p101_realloc(env, err, buffer, next_capacity);
             if(resized == NULL)
             {
                 goto done;
@@ -63,11 +74,8 @@ void p101_error_path_walk_read_policy_json(const struct p101_env *env, struct p1
         used += p101_strlen(env, buffer + used);
     }
 
-    if(buffer != NULL)
-    {
-        buffer[used] = '\0';
-        (void)p101_tool_event_parse_policy_summary_json(buffer, schema, summary);
-    }
+    buffer[used] = '\0';
+    (void)p101_tool_event_parse_policy_summary_json(buffer, schema, summary);
 
 done:
     p101_free(env, buffer);

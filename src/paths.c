@@ -4,8 +4,7 @@
 #include <errno.h>
 #include <p101_c/p101_stdio.h>
 #include <p101_c/p101_string.h>
-#include <p101_posix/p101_stdio.h>
-#include <p101_posix/p101_unistd.h>
+#include <p101_process/process.h>
 #include <stdio.h>
 #include <string.h>
 

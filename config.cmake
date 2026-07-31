@@ -55,8 +55,10 @@ set(main_LINK_LIBRARIES
         p101_env
         p101_tool_event
         p101_c
-        p101_posix
-        p101_unix
+        p101_cli
+        p101_filesystem
+        p101_io
+        p101_process
         p101_convert
         p101_util
         m

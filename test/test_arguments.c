@@ -14,15 +14,17 @@
 #include <p101_c/p101_string.h>
 #include <p101_env/env.h>
 #include <p101_error/error.h>
-#include <p101_posix/p101_stdio.h>
-#include <p101_posix/p101_stdlib.h>
-#include <p101_posix/p101_unistd.h>
-#include <p101_posix/sys/p101_stat.h>
+#include <p101_filesystem/filesystem.h>
+#include <p101_io/io.h>
+#include <p101_process/process.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+
+extern void p101_error_path_walk_test_set_policy_output_limit(size_t limit);
 
 static struct p101_error *error;
 static struct p101_env   *env;
@@ -491,6 +493,53 @@ static void test_policy_reader_handles_missing_and_growth(void)
     TEST_ASSERT_FALSE(p101_error_has_error(error));
     TEST_ASSERT_FALSE(summary.parsed);
     TEST_ASSERT_EQUAL_INT(0, p101_unlink(env, error, path));
+    write_text_file(path, large);
+    p101_error_path_walk_test_set_policy_output_limit(POLICY_INITIAL_CAPACITY + 4U);
+    p101_error_path_walk_read_policy_json(env, error, path, RESOURCE_POLICY_SCHEMA, &summary);
+    p101_error_path_walk_test_set_policy_output_limit(POLICY_OUTPUT_LIMIT);
+    TEST_ASSERT_FALSE(p101_error_has_error(error));
+    TEST_ASSERT_FALSE(summary.parsed);
+    TEST_ASSERT_EQUAL_INT(0, p101_unlink(env, error, path));
+    p101_free(env, large);
+}
+
+static void expect_policy_reader_allocation_failure(const char *path, const char *wrapper)
+{
+    struct p101_error  *fault_error;
+    struct p101_env    *fault_env;
+    struct policy_summary summary;
+
+    p101_setenv(env, error, "P101_FAULT_CALL", "1", 1);
+    p101_setenv(env, error, "P101_FAULT_NAME", wrapper, 1);
+    p101_setenv(env, error, "P101_FAULT_ERRNO", "12", 1);
+    fault_error = p101_error_create(false);
+    fault_env   = p101_env_create(fault_error, NULL);
+    p101_error_path_walk_read_policy_json(fault_env, fault_error, path, RESOURCE_POLICY_SCHEMA, &summary);
+    TEST_ASSERT_TRUE(p101_error_has_error(fault_error));
+    TEST_ASSERT_FALSE(summary.parsed);
+    p101_env_destroy(fault_env);
+    p101_error_destroy(fault_error);
+    p101_unsetenv(env, error, "P101_FAULT_CALL");
+    p101_unsetenv(env, error, "P101_FAULT_NAME");
+    p101_unsetenv(env, error, "P101_FAULT_ERRNO");
+}
+
+static void test_policy_reader_allocation_failures(void)
+{
+    char  path[PATH_LEN];
+    char *large;
+
+    write_text_file(path, "{}");
+    expect_policy_reader_allocation_failure(path, "malloc");
+    TEST_ASSERT_EQUAL_INT(0, p101_unlink(env, error, path));
+
+    large = (char *)p101_malloc(env, error, POLICY_INITIAL_CAPACITY + 32U);
+    TEST_ASSERT_NOT_NULL(large);
+    p101_memset(env, large, 'x', POLICY_INITIAL_CAPACITY + 31U);
+    large[POLICY_INITIAL_CAPACITY + 31U] = '\0';
+    write_text_file(path, large);
+    expect_policy_reader_allocation_failure(path, "realloc");
+    TEST_ASSERT_EQUAL_INT(0, p101_unlink(env, error, path));
     p101_free(env, large);
 }
 
@@ -729,6 +778,7 @@ int main(void)
     RUN_TEST(test_fault_log_parser_covers_supported_and_invalid_records);
     RUN_TEST(test_printer_covers_all_status_and_result_shapes);
     RUN_TEST(test_policy_reader_handles_missing_and_growth);
+    RUN_TEST(test_policy_reader_allocation_failures);
     RUN_TEST(test_runner_helpers_cover_status_resource_and_group_models);
     RUN_TEST(test_run_observe_covers_argument_flush_fork_wait_and_child_failures);
     RUN_TEST(test_run_one_case_and_run_cover_error_boundaries);
