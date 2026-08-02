@@ -31,7 +31,7 @@ Program examples:
 | `p101-error-path-walk -F open -- ./prog config.txt` | Walk only fault-capable calls named `open` |
 | `p101-error-path-walk -E 24 -- ./prog config.txt` | Inject errno `24` instead of the default `EIO` |
 | `p101-error-path-walk -O ../p101-observe/build-clang/p101-observe -- ./prog` | Use an in-tree p101-observe build |
-| `p101-error-path-walk -U ../../scripts/p101-run.py -Y ../../scripts/p101-analyze.py -- ./prog` | Use the in-tree shared runtime drivers |
+| `p101-error-path-walk -U ../../scripts/runtime/p101-run.py -Y ../../scripts/runtime/p101-analyze.py -- ./prog` | Use the in-tree shared runtime drivers |
 | `p101-error-path-walk -B ../../libraries/lib_tool_event/build-clang/p101-event-model -- ./prog` | Use an in-tree shared event-model build |
 
 The final summary groups injected runs by faulted wrapper name and resource
