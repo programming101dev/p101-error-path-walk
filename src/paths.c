@@ -10,6 +10,7 @@
 
 static void  join_path(const struct p101_env *env, struct p101_error *err, char destination[PATH_LEN], const char *dir, const char *name);
 static char *split_tab(char **cursor);
+static bool  fault_semantics_valid(const struct p101_env *env, const char *mode, const char *phase, const char *disposition);
 #ifdef P101_ERROR_PATH_WALK_TESTING
 static bool force_error_create_failure;
 #endif
@@ -135,6 +136,8 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
         const char *errnum;
         const char *mode;
         const char *amount;
+        const char *phase;
+        const char *disposition;
         size_t      length;
 
         if(p101_fgets(env, err, line, sizeof(line), stream) == NULL)
@@ -156,29 +159,30 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
             continue;
         }
 
-        version    = split_tab(&cursor);
-        pid        = split_tab(&cursor);
-        calls_seen = split_tab(&cursor);
-        field      = split_tab(&cursor);
-        errnum     = split_tab(&cursor);
-        mode       = NULL;
-        amount     = NULL;
+        version     = split_tab(&cursor);
+        pid         = split_tab(&cursor);
+        calls_seen  = split_tab(&cursor);
+        field       = split_tab(&cursor);
+        errnum      = split_tab(&cursor);
+        mode        = split_tab(&cursor);
+        amount      = split_tab(&cursor);
+        phase       = split_tab(&cursor);
+        disposition = split_tab(&cursor);
 
-        if(version != NULL && p101_strcmp(env, version, "2") == 0)
-        {
-            mode   = split_tab(&cursor);
-            amount = split_tab(&cursor);
-        }
-
-        if(version == NULL || pid == NULL || calls_seen == NULL || field == NULL || errnum == NULL || (p101_strcmp(env, version, "2") == 0 && (mode == NULL || amount == NULL)) || cursor != NULL)
+        if(version == NULL || pid == NULL || calls_seen == NULL || field == NULL || errnum == NULL || mode == NULL || amount == NULL || phase == NULL || disposition == NULL || cursor != NULL)
         {
             P101_ERROR_RAISE_USER(err, "The fault log contains a malformed P101FAULT record.", ERR_USAGE);
             goto done;
         }
 
-        if(p101_strcmp(env, version, "1") != 0 && p101_strcmp(env, version, "2") != 0)
+        if(p101_strcmp(env, version, "3") != 0)
         {
             P101_ERROR_RAISE_USER(err, "The fault log version is not supported.", ERR_USAGE);
+            goto done;
+        }
+        if(!fault_semantics_valid(env, mode, phase, disposition))
+        {
+            P101_ERROR_RAISE_USER(err, "The fault log contains inconsistent phase/disposition semantics.", ERR_USAGE);
             goto done;
         }
 
@@ -233,6 +237,23 @@ static char *split_tab(char **cursor)
 
 done:
     return start;
+}
+
+static bool fault_semantics_valid(const struct p101_env *env, const char *mode, const char *phase, const char *disposition)
+{
+    if(p101_strcmp(env, mode, "short") == 0)
+    {
+        return (p101_strcmp(env, phase, "after-partial-progress") == 0 && p101_strcmp(env, disposition, "progress-known") == 0) != 0;
+    }
+    if(p101_strcmp(env, mode, "uncertain") == 0)
+    {
+        return (p101_strcmp(env, phase, "after-dispatch") == 0 && p101_strcmp(env, disposition, "outcome-uncertain") == 0) != 0;
+    }
+    if(p101_strcmp(env, mode, "error") == 0 || p101_strcmp(env, mode, "eintr") == 0 || p101_strcmp(env, mode, "timeout") == 0)
+    {
+        return (p101_strcmp(env, phase, "before-call") == 0 && p101_strcmp(env, disposition, "retry-safe") == 0) != 0;
+    }
+    return false;
 }
 
 #ifdef P101_ERROR_PATH_WALK_TESTING

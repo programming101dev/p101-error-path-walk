@@ -68,7 +68,7 @@ case "${FAKE_SUMMARY_MODE:-clean}" in
 esac
 
 if [ -n "${P101_OBSERVE_CHILD_FAULT_CALL:-}" ] && [ "${P101_OBSERVE_CHILD_FAULT_CALL}" -le "${FAKE_FAULTS:-1}" ]; then
-  printf 'P101FAULT\t2\t1\t%s\t%s\t5\terror\t1\n' \
+  printf 'P101FAULT\t3\t1\t%s\t%s\t5\terror\t1\tbefore-call\tretry-safe\n' \
     "$P101_OBSERVE_CHILD_FAULT_CALL" "${P101_OBSERVE_CHILD_FAULT_NAME:-open}" \
     >"$P101_OBSERVE_CHILD_FAULT_LOG"
 fi

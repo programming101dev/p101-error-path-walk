@@ -52,9 +52,11 @@ Options:
   `EIO`.
 - `-F <name>` counts and fails only a named p101 wrapper, such as `open`,
   `read`, `malloc`, or `socket`.
-- `-M <mode>` selects `error`, `eintr`, `timeout`, or `short`. `eintr` and
+- `-M <mode>` selects `error`, `eintr`, `timeout`, `short`, or `uncertain`. `eintr` and
   `timeout` inject `EINTR` and `ETIMEDOUT`; `short` performs a real bounded
   `read`, `write`, `pread`, or `pwrite` and returns its partial result.
+  `uncertain` performs one of those operations successfully but reports
+  `ETIMEDOUT`, exposing retry logic that can duplicate writes or lose reads.
 - `-A <amount>` sets the maximum byte count used by short-I/O injection.
 - `-R <count>` injects the selected outcome at the chosen call and the next
   `count - 1` matching calls, which exercises retry loops.
@@ -66,6 +68,7 @@ p101 walk -- ./my-p101-program config.txt
 p101-error-path-walk -F open -E 24 -l /tmp/my-run -- ./my-p101-program config.txt
 p101-error-path-walk -F read -M eintr -R 3 -- ./my-p101-program input
 p101-error-path-walk -F write -M short -A 1 -- ./my-p101-program
+p101-error-path-walk -F write -M uncertain -- ./my-p101-program
 ```
 
 Exit status is `0` when every walked error path is clean under the shared

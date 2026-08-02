@@ -148,7 +148,7 @@ static void test_parse_rejects_missing_command(void)
 
 static void test_argument_validation_covers_null_empty_modes_and_short_names(void)
 {
-    static const char *const modes[]       = {"error", "eintr", "timeout", "short"};
+    static const char *const modes[]       = {"error", "eintr", "timeout", "short", "uncertain"};
     static const char *const short_names[] = {"read", "write", "pread", "pwrite"};
     char                    *command[]     = {"true", NULL};
     struct arguments         args;
@@ -233,7 +233,7 @@ static void test_argument_validation_covers_null_empty_modes_and_short_names(voi
         p101_error_path_walk_arguments_init(env, &args);
         args.command_argv = command;
         args.fault_mode   = modes[index];
-        args.fault_name   = p101_strcmp(env, modes[index], "short") == 0 ? "read" : NULL;
+        args.fault_name   = (p101_strcmp(env, modes[index], "short") == 0 || p101_strcmp(env, modes[index], "uncertain") == 0) ? "read" : NULL;
         p101_error_path_walk_check_arguments(env, error, &args);
         TEST_ASSERT_FALSE(p101_error_has_error(error));
     }
@@ -245,6 +245,11 @@ static void test_argument_validation_covers_null_empty_modes_and_short_names(voi
         args.command_argv = command;
         args.fault_mode   = "short";
         args.fault_name   = short_names[index];
+        p101_error_path_walk_check_arguments(env, error, &args);
+        TEST_ASSERT_FALSE(p101_error_has_error(error));
+
+        p101_error_reset(error);
+        args.fault_mode = "uncertain";
         p101_error_path_walk_check_arguments(env, error, &args);
         TEST_ASSERT_FALSE(p101_error_has_error(error));
     }
@@ -273,12 +278,11 @@ static void test_file_exists_checks_real_files(void)
 
 static void test_resource_policy_summary(void)
 {
-    static const char json[] =
-        "{\"schema\":\"p101-resource-policy-findings-v1\",\"findings\":[{\"id\":\"P101-FD-001\"}],\"summary\":{\"records\":3,\"processes\":1,\"findings\":1,\"process_metrics\":[]}}\n";
+    static const char     json[] = "{\"schema\":\"p101-resource-policy-findings-v1\",\"findings\":[{\"id\":\"P101-FD-001\"}],\"summary\":{\"records\":3,\"processes\":1,\"findings\":1,\"process_metrics\":[]}}\n";
     struct policy_summary summary;
-    FILE                   *stream;
-    char                    path[] = "/tmp/p101-error-path-walk-resource-XXXXXX";
-    int                     fd;
+    FILE                 *stream;
+    char                  path[] = "/tmp/p101-error-path-walk-resource-XXXXXX";
+    int                   fd;
 
     fd = p101_mkstemp(env, error, path);
     TEST_ASSERT_FALSE(p101_error_has_error(error));
@@ -360,20 +364,25 @@ static void test_paths_cover_baseline_fault_custom_and_overflow(void)
 static void test_fault_log_parser_covers_supported_and_invalid_records(void)
 {
     static const char *const valid_records[] = {
-        "noise\nP101FAULT\t1\t1\t2\topen\t5\n",
-        "P101FAULT\t1\t1\t2\topen\t5",
-        "P101FAULT\t2\t1\t2\tread\t5\tshort\t1\r\n",
+        "noise\nP101FAULT\t3\t1\t2\topen\t5\terror\t1\tbefore-call\tretry-safe\n",
+        "P101FAULT\t3\t1\t2\topen\t5\terror\t1\tbefore-call\tretry-safe",
+        "P101FAULT\t3\t1\t2\tread\t5\tshort\t1\tafter-partial-progress\tprogress-known\r\n",
+        "P101FAULT\t3\t1\t2\twrite\t110\tuncertain\t1\tafter-dispatch\toutcome-uncertain\n",
     };
     static const char *const invalid_records[] = {
         "P101FAULT\n",
-        "P101FAULT\t1\n",
-        "P101FAULT\t1\t1\n",
-        "P101FAULT\t1\t1\t2\n",
-        "P101FAULT\t1\t1\t2\topen\n",
-        "P101FAULT\t2\t1\t2\tread\t5\n",
-        "P101FAULT\t2\t1\t2\tread\t5\tshort\n",
-        "P101FAULT\t2\t1\t2\tread\t5\tshort\t1\textra\n",
-        "P101FAULT\t9\t1\t2\topen\t5\n",
+        "P101FAULT\t3\n",
+        "P101FAULT\t3\t1\n",
+        "P101FAULT\t3\t1\t2\n",
+        "P101FAULT\t3\t1\t2\topen\n",
+        "P101FAULT\t3\t1\t2\tread\t5\n",
+        "P101FAULT\t3\t1\t2\tread\t5\tshort\n",
+        "P101FAULT\t3\t1\t2\tread\t5\tshort\t1\n",
+        "P101FAULT\t3\t1\t2\tread\t5\tshort\t1\tafter-partial-progress\n",
+        "P101FAULT\t3\t1\t2\tread\t5\tshort\t1\tafter-partial-progress\tprogress-known\textra\n",
+        "P101FAULT\t3\t1\t2\tread\t5\tshort\t1\tbefore-call\tretry-safe\n",
+        "P101FAULT\t3\t1\t2\twrite\t5\tunknown\t1\tbefore-call\tretry-safe\n",
+        "P101FAULT\t2\t1\t2\tread\t5\tshort\t1\n",
     };
     char path[PATH_LEN];
     char name[NAME_LEN];
@@ -459,14 +468,14 @@ static void test_printer_covers_all_status_and_result_shapes(void)
     result.resources.parsed     = false;
     p101_error_path_walk_print_run_result(env, error, &result);
 
-    result.fault_hit                        = true;
-    result.fault_name[0]                    = '\0';
-    result.resource_log_present             = true;
-    result.resources.parsed                 = true;
-    result.resources.records                = 6U;
-    result.resources.findings               = 6U;
-    result.analysis.parsed                  = true;
-    result.analysis.findings                = 8U;
+    result.fault_hit            = true;
+    result.fault_name[0]        = '\0';
+    result.resource_log_present = true;
+    result.resources.parsed     = true;
+    result.resources.records    = 6U;
+    result.resources.findings   = 6U;
+    result.analysis.parsed      = true;
+    result.analysis.findings    = 8U;
     p101_error_path_walk_print_run_result(env, error, &result);
     p101_strncpy(env, result.fault_name, "read", sizeof(result.fault_name));
     p101_error_path_walk_print_run_result(env, error, &result);
@@ -476,8 +485,8 @@ static void test_printer_covers_all_status_and_result_shapes(void)
 static void test_policy_reader_handles_missing_and_growth(void)
 {
     struct policy_summary summary;
-    char                    path[PATH_LEN];
-    char                   *large;
+    char                  path[PATH_LEN];
+    char                 *large;
 
     p101_error_path_walk_read_policy_json(env, error, "/tmp/p101-error-path-walk-missing-summary", RESOURCE_POLICY_SCHEMA, &summary);
     TEST_ASSERT_TRUE(p101_error_has_error(error));
@@ -505,8 +514,8 @@ static void test_policy_reader_handles_missing_and_growth(void)
 
 static void expect_policy_reader_allocation_failure(const char *path, const char *wrapper)
 {
-    struct p101_error  *fault_error;
-    struct p101_env    *fault_env;
+    struct p101_error    *fault_error;
+    struct p101_env      *fault_env;
     struct policy_summary summary;
 
     p101_setenv(env, error, "P101_FAULT_CALL", "1", 1);
@@ -570,8 +579,8 @@ static void test_runner_helpers_cover_status_resource_and_group_models(void)
     result.resources.parsed     = true;
     TEST_ASSERT_TRUE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
     result.resources.has_records = true;
-    result.analysis.parsed   = true;
-    result.analysis.findings = 21U;
+    result.analysis.parsed       = true;
+    result.analysis.findings     = 21U;
     TEST_ASSERT_EQUAL_UINT(21U, p101_error_path_walk_test_analysis_finding_count(&result));
     TEST_ASSERT_FALSE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
     result.resource_log_present = false;
@@ -579,11 +588,11 @@ static void test_runner_helpers_cover_status_resource_and_group_models(void)
     result.resource_log_present = true;
     result.resources.parsed     = false;
     TEST_ASSERT_TRUE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
-    result.resources.parsed = true;
+    result.resources.parsed      = true;
     result.resources.has_records = false;
     TEST_ASSERT_TRUE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
     result.resources.has_records = true;
-    result.analysis.parsed  = false;
+    result.analysis.parsed       = false;
     TEST_ASSERT_TRUE(p101_error_path_walk_test_analysis_summary_unavailable(&result));
 
     p101_error_path_walk_test_exercise_fault_groups(env, error);
@@ -647,8 +656,8 @@ static void test_run_observe_covers_argument_flush_fork_wait_and_child_failures(
 
     args.p101_run   = "/usr/bin/true";
     fault.call_name = "open";
-    fault.fail_at     = 1U;
-    fault.matches     = 0U;
+    fault.fail_at   = 1U;
+    fault.matches   = 0U;
     p101_env_set_fault_injector(env, inject_selected_failure, &fault);
     TEST_ASSERT_EQUAL_INT(EXEC_FAILURE << 8, p101_error_path_walk_test_run_observe(env, error, &args, &result));
     TEST_ASSERT_FALSE(p101_error_has_error(error));
