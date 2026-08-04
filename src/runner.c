@@ -44,6 +44,7 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
     struct fault_group groups[FAULT_GROUP_LIMIT];
     size_t             group_count;
     bool               trouble;
+    int                status;
 
     P101_TRACE_SCOPE(env);
     runs        = 0;
@@ -102,15 +103,18 @@ done:
 
     if(p101_error_has_error(err) || trouble)
     {
-        return EXIT_TROUBLE;
+        status = EXIT_TROUBLE;
     }
-
-    if(findings > 0)
+    else if(findings > 0)
     {
-        return EXIT_FINDINGS;
+        status = EXIT_FINDINGS;
+    }
+    else
+    {
+        status = EXIT_SUCCESS;
     }
 
-    return EXIT_SUCCESS;
+    return status;
 }
 
 static void update_fault_group(const struct p101_env *env, struct p101_error *err, struct fault_group groups[FAULT_GROUP_LIMIT], size_t *group_count, const struct run_result *result)
@@ -176,12 +180,18 @@ done:
 
 static size_t analysis_finding_count(const struct run_result *result)
 {
+    size_t findings;
+
     if(!result->analysis.parsed)
     {
-        return 0U;
+        findings = 0U;
+    }
+    else
+    {
+        findings = result->analysis.findings;
     }
 
-    return result->analysis.findings;
+    return findings;
 }
 
 static bool analysis_summary_unavailable(const struct run_result *result)
@@ -192,6 +202,7 @@ static bool analysis_summary_unavailable(const struct run_result *result)
 static int run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result)
 {
     char fault_value[FAULT_LEN];
+    int  status;
 
     P101_TRACE_SCOPE(env);
     p101_memset(env, result, 0, sizeof(*result));
@@ -273,10 +284,14 @@ done:
 
     if(p101_error_has_error(err))
     {
-        return EXIT_TROUBLE;
+        status = EXIT_TROUBLE;
+    }
+    else
+    {
+        status = EXIT_SUCCESS;
     }
 
-    return EXIT_SUCCESS;
+    return status;
 }
 
 static int run_p101_pipeline(const struct p101_env *env, struct p101_error *err, const struct arguments *args, const struct run_result *result)

@@ -2,9 +2,9 @@
 # selects a fuzzer-capable clang and passes it as CMAKE_C_COMPILER. Separate
 # from the strict analysis build.
 #
-# TARGET: p101-error-path-walk's argument parser in src/cli.c. p101_exit() is
-# redirected into a longjmp so usage paths are normal fuzz inputs, not process
-# exits.
+# TARGET: p101-error-path-walk's argument parser in src/cli.c. Help is
+# represented as ordinary parser state, so every usage path remains a normal
+# fuzz input.
 cmake_minimum_required(VERSION 3.14)
 project(p101_fuzz C)
 
@@ -41,9 +41,7 @@ set(_FUZZ_FLAGS -fsanitize=fuzzer,address,undefined -g -O1)
 
 add_executable(fuzz fuzz_parse.c "${CMAKE_CURRENT_SOURCE_DIR}/../src/cli.c")
 
-# Redirect p101_exit() (usage() is _Noreturn) so the -h path is a longjmp, not
-# a fake crash.
-target_compile_definitions(fuzz PRIVATE p101_exit=p101_fuzz_exit P101_SUPPRESS_USAGE_TEXT)
+target_compile_definitions(fuzz PRIVATE P101_SUPPRESS_USAGE_TEXT)
 
 target_include_directories(fuzz PRIVATE ${_P101_INC_DIRS} "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_compile_options(fuzz PRIVATE ${_FUZZ_FLAGS})

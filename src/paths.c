@@ -8,12 +8,30 @@
 #include <stdio.h>
 #include <string.h>
 
-static void  join_path(const struct p101_env *env, struct p101_error *err, char destination[PATH_LEN], const char *dir, const char *name);
-static char *split_tab(char **cursor);
-static bool  fault_semantics_valid(const struct p101_env *env, const char *mode, const char *phase, const char *disposition);
+static void               join_path(const struct p101_env *env, struct p101_error *err, char destination[PATH_LEN], const char *dir, const char *name);
+static char              *split_tab(char **cursor);
+static bool               fault_semantics_valid(const struct p101_env *env, const char *mode, const char *phase, const char *disposition);
+static struct p101_error *create_predicate_error(void);
 #ifdef P101_ERROR_PATH_WALK_TESTING
 static bool force_error_create_failure;
 #endif
+
+static struct p101_error *create_predicate_error(void)
+{
+    struct p101_error *predicate_err;
+
+    predicate_err = NULL;
+#ifdef P101_ERROR_PATH_WALK_TESTING
+    if(!force_error_create_failure)
+    {
+        predicate_err = p101_error_create(false);
+    }
+#else
+    predicate_err = p101_error_create(false);
+#endif
+
+    return predicate_err;
+}
 
 void p101_error_path_walk_make_log_paths(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result)
 {
@@ -71,12 +89,8 @@ bool p101_error_path_walk_file_exists(const struct p101_env *env, const char *pa
     bool               exists;
 
     P101_TRACE_SCOPE(env);
-    exists = false;
-    predicate_err =
-#ifdef P101_ERROR_PATH_WALK_TESTING
-        force_error_create_failure ? NULL :
-#endif
-                                     p101_error_create(false);
+    exists        = false;
+    predicate_err = create_predicate_error();
 
     if(predicate_err == NULL)
     {
@@ -105,14 +119,10 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
     bool               hit;
 
     P101_TRACE_SCOPE(env);
-    stream  = NULL;
-    hit     = false;
-    name[0] = '\0';
-    predicate_err =
-#ifdef P101_ERROR_PATH_WALK_TESTING
-        force_error_create_failure ? NULL :
-#endif
-                                     p101_error_create(false);
+    stream        = NULL;
+    hit           = false;
+    name[0]       = '\0';
+    predicate_err = create_predicate_error();
     if(predicate_err == NULL)
     {
         P101_ERROR_RAISE_ERRNO(err, ENOMEM);
@@ -241,19 +251,26 @@ done:
 
 static bool fault_semantics_valid(const struct p101_env *env, const char *mode, const char *phase, const char *disposition)
 {
+    bool valid;
+
     if(p101_strcmp(env, mode, "short") == 0)
     {
-        return (p101_strcmp(env, phase, "after-partial-progress") == 0 && p101_strcmp(env, disposition, "progress-known") == 0) != 0;
+        valid = (p101_strcmp(env, phase, "after-partial-progress") == 0 && p101_strcmp(env, disposition, "progress-known") == 0) != 0;
     }
-    if(p101_strcmp(env, mode, "uncertain") == 0)
+    else if(p101_strcmp(env, mode, "uncertain") == 0)
     {
-        return (p101_strcmp(env, phase, "after-dispatch") == 0 && p101_strcmp(env, disposition, "outcome-uncertain") == 0) != 0;
+        valid = (p101_strcmp(env, phase, "after-dispatch") == 0 && p101_strcmp(env, disposition, "outcome-uncertain") == 0) != 0;
     }
-    if(p101_strcmp(env, mode, "error") == 0 || p101_strcmp(env, mode, "eintr") == 0 || p101_strcmp(env, mode, "timeout") == 0)
+    else if(p101_strcmp(env, mode, "error") == 0 || p101_strcmp(env, mode, "eintr") == 0 || p101_strcmp(env, mode, "timeout") == 0)
     {
-        return (p101_strcmp(env, phase, "before-call") == 0 && p101_strcmp(env, disposition, "retry-safe") == 0) != 0;
+        valid = (p101_strcmp(env, phase, "before-call") == 0 && p101_strcmp(env, disposition, "retry-safe") == 0) != 0;
     }
-    return false;
+    else
+    {
+        valid = false;
+    }
+
+    return valid;
 }
 
 #ifdef P101_ERROR_PATH_WALK_TESTING

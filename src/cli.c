@@ -4,13 +4,12 @@
 #include <errno.h>
 #include <p101_c/p101_ctype.h>
 #include <p101_c/p101_stdio.h>
-#include <p101_c/p101_stdlib.h>
 #include <p101_c/p101_string.h>
 #include <p101_cli/cli.h>
 #include <p101_convert/integer.h>
 #include <stdlib.h>
 
-static void handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option, const char *option_argument, int option_character, const char *program_name);
+static void handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option, const char *option_argument, int option_character);
 static bool required_text_missing(const char *text);
 static bool fault_mode_supported(const struct p101_env *env, const char *mode);
 static bool io_outcome_name_supported(const struct p101_env *env, const char *name);
@@ -40,12 +39,13 @@ void p101_error_path_walk_parse_arguments(const struct p101_env *env, struct p10
 
     if(argc == 2 && p101_strcmp(env, argv[1], "--help") == 0)
     {
-        p101_error_path_walk_usage(env, err, argv[0], EXIT_SUCCESS, NULL);
+        args->show_help = true;
+        return;
     }
 
     while((opt = p101_getopt(env, argc, argv, ":hvn:l:U:O:Y:B:E:F:M:A:R:")) != -1 && p101_error_has_no_error(err))
     {
-        handle_option(env, err, args, opt, optarg, optopt, argv[0]);
+        handle_option(env, err, args, opt, optarg, optopt);
     }
 
     if(p101_error_has_no_error(err))
@@ -54,7 +54,7 @@ void p101_error_path_walk_parse_arguments(const struct p101_env *env, struct p10
     }
 }
 
-static void handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option, const char *option_argument, int option_character, const char *program_name)
+static void handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option, const char *option_argument, int option_character)
 {
     const char **destination;
 
@@ -63,7 +63,8 @@ static void handle_option(const struct p101_env *env, struct p101_error *err, st
     {
         case 'h':
         {
-            p101_error_path_walk_usage(env, err, program_name, EXIT_SUCCESS, NULL);
+            args->show_help = true;
+            break;
         }
         case 'v':
         {
@@ -221,7 +222,7 @@ static bool io_outcome_name_supported(const struct p101_env *env, const char *na
 #ifdef P101_ERROR_PATH_WALK_TESTING
 void p101_error_path_walk_test_handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option)
 {
-    handle_option(env, err, args, option, "value", option, "p101-error-path-walk-test");
+    handle_option(env, err, args, option, "value", option);
 }
 #endif
 
@@ -287,9 +288,10 @@ done:
     return;
 }
 
-_Noreturn void p101_error_path_walk_usage(const struct p101_env *env, struct p101_error *err, const char *program_name, int exit_code, const char *message)
+void p101_error_path_walk_usage(const struct p101_env *env, struct p101_error *err, const char *program_name, int exit_code, const char *message)
 {
     P101_TRACE_SCOPE(env);
+    (void)exit_code;
 
 #ifndef P101_SUPPRESS_USAGE_TEXT
     if(message != NULL)
@@ -319,9 +321,8 @@ _Noreturn void p101_error_path_walk_usage(const struct p101_env *env, struct p10
     p101_fputs(env, err, "  -R <count>              Inject at this and the next count-1 matching calls\n", stderr);
     p101_fputs(env, err, "\nThe child must use p101_env_create() from an updated lib_env build.\n", stderr);
 #else
+    (void)exit_code;
     (void)message;
     (void)program_name;
 #endif
-
-    p101_exit(env, exit_code);
 }

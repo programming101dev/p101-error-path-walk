@@ -2,37 +2,16 @@
  * libFuzzer harness for p101-error-path-walk's argument parser
  * (src/cli.c: p101_error_path_walk_parse_arguments()). This fuzzes the code YOU write, not a
  * library function.
- *
- * p101_exit() is handled by a -D define in fuzz/CMakeLists.txt, so nothing in
- * src/ has to change:
- *
- *   -Dp101_exit=p101_fuzz_exit    usage() is _Noreturn and calls p101_exit().
- *                                 Redirect it into a longjmp so -h is a normal
- *                                 input, not the end of the fuzz process.
  */
 #include "cli.h"
 #include "constants.h"
 #include <p101_c/p101_stdlib.h>
 #include <p101_c/p101_string.h>
-#include <setjmp.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-/* longjmp target for the redirected p101_exit(). */
-static jmp_buf g_fuzz_exit_jmp;
-
-/* The redirected p101_exit(): unwind back into the harness instead of terminating
- * the process. _Noreturn matches p101_exit()'s contract (usage() is _Noreturn);
- * longjmp guarantees it never actually returns. */
-_Noreturn void p101_fuzz_exit(const struct p101_env *env, int code)
-{
-    (void)env;
-    (void)code;
-    longjmp(g_fuzz_exit_jmp, 1);
-}
 
 #define FUZZ_MAX_ARGS 64
 
@@ -104,21 +83,16 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     args.event_model  = DEFAULT_MODEL_PATH;
     args.fault_errno  = EIO;
 
-    /* If parse_arguments takes the -h path, usage()->p101_exit()->longjmp lands
-     * here with a non-zero return -- a normal outcome, not a crash. */
-    if(setjmp(g_fuzz_exit_jmp) == 0)
+    p101_error_path_walk_parse_arguments(env, err, argc, argv, &args);
+
+    if(!args.show_help && p101_error_has_no_error(err))
     {
-        p101_error_path_walk_parse_arguments(env, err, argc, argv, &args);
+        p101_error_path_walk_check_arguments(env, err, &args);
+    }
 
-        if(p101_error_has_no_error(err))
-        {
-            p101_error_path_walk_check_arguments(env, err, &args);
-        }
-
-        if(p101_error_has_no_error(err))
-        {
-            p101_error_path_walk_convert_arguments(env, err, &args);
-        }
+    if(!args.show_help && p101_error_has_no_error(err))
+    {
+        p101_error_path_walk_convert_arguments(env, err, &args);
     }
 
 done:

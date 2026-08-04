@@ -29,6 +29,7 @@ struct arguments
     unsigned int fault_repeat;
     bool         verbose;
     bool         stop_at_exhaustion;
+    bool         show_help;
 };
 
 #endif    // ERROR_PATH_WALK_ARGUMENTS_H
