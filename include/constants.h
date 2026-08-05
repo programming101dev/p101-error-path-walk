@@ -26,21 +26,22 @@
 #define RESOURCE_POLICY_SCHEMA "p101-resource-policy-findings-v1"
 #define ANALYSIS_POLICY_SCHEMA "p101-analysis-findings-v1"
 #define DEFAULT_LOG_PREFIX "/tmp/p101-error-path-walk"
+
 enum
 {
-    FAULT_LOG_VERSION    = 2,
-    MSG_LEN              = 256,
-    FAULT_LEN            = 32,
-    READ_BUF_LEN         = 4096,
+    FAULT_LOG_VERSION       = 2,
+    MSG_LEN                 = 256,
+    FAULT_LEN               = 32,
+    READ_BUF_LEN            = 4096,
     POLICY_INITIAL_CAPACITY = 4096,
     POLICY_OUTPUT_LIMIT     = 64 * 1024 * 1024,
-    REPORT_FILE_MODE     = 0600,
-    EXEC_FAILURE         = 127,
-    DEFAULT_MAX_FAILURES = 1024,
-    MAX_FAILURES_LIMIT   = 100000,
-    MAX_TOOL_ARGS        = 128,
-    EXIT_FINDINGS        = 1,
-    EXIT_TROUBLE         = 2
+    REPORT_FILE_MODE        = 0600,
+    EXEC_FAILURE            = 127,
+    DEFAULT_MAX_FAILURES    = 1024,
+    MAX_FAILURES_LIMIT      = 100000,
+    MAX_TOOL_ARGS           = 128,
+    EXIT_FINDINGS           = 1,
+    EXIT_TROUBLE            = 2
 };
 
 #endif    // P101_ERROR_PATH_WALK_CONSTANTS_H

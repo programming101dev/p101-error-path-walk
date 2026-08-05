@@ -47,7 +47,7 @@ void p101_error_path_walk_read_policy_json(const struct p101_env *env, struct p1
 
     while(used < output_limit - 1U)
     {
-        const char *line;
+        size_t read_count;
 
         if(used == capacity - 1U)
         {
@@ -64,18 +64,16 @@ void p101_error_path_walk_read_policy_json(const struct p101_env *env, struct p1
             capacity = next_capacity;
         }
 
-        line = p101_fgets(env, err, buffer + used, (int)(capacity - used), stream);
-
-        if(line == NULL)
+        read_count = p101_fread(env, err, buffer + used, 1U, capacity - used - 1U, stream);
+        used += read_count;
+        if(p101_error_has_error(err) || read_count == 0U)
         {
             break;
         }
-
-        used += p101_strlen(env, buffer + used);
     }
 
     buffer[used] = '\0';
-    (void)p101_tool_event_parse_policy_summary_json(buffer, schema, summary);
+    (void)p101_tool_event_parse_policy_summary_json_n(buffer, used, schema, summary);
 
 done:
     p101_free(env, buffer);
