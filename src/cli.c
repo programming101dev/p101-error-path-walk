@@ -33,30 +33,57 @@ void p101_error_path_walk_arguments_init(const struct p101_env *env, struct argu
 
 void p101_error_path_walk_parse_arguments(const struct p101_env *env, struct p101_error *err, int argc, char *argv[], struct arguments *args)
 {
-    int opt;
+    int  p101_expression_result_12;
+    int  p101_call_result_13;
+    bool p101_call_result_1;
+    int  opt;
 
     P101_TRACE_SCOPE(env);
     opterr = 0;
 
-    if(argc == 2 && p101_strcmp(env, argv[1], "--help") == 0)
+    p101_expression_result_12 = 0;
+    if(argc == 2)
+    {
+        p101_call_result_13 = p101_strcmp(env, argv[1], "--help");
+        if(p101_call_result_13 == 0)
+        {
+            p101_expression_result_12 = 1;
+        }
+    }
+    if(p101_expression_result_12)
     {
         args->show_help = true;
-        return;
+        goto done;
     }
 
-    while((opt = p101_getopt(env, argc, argv, ":hvn:l:U:O:Y:B:E:F:M:A:R:")) != -1 && p101_error_has_no_error(err))
+    for(;;)
     {
+        opt = p101_getopt(env, argc, argv, ":hvn:l:U:O:Y:B:E:F:M:A:R:");
+        if(opt == -1)
+        {
+            break;
+        }
+        p101_call_result_1 = p101_error_has_no_error(err);
+        if(!p101_call_result_1)
+        {
+            break;
+        }
         handle_option(env, err, args, opt, optarg, optopt);
     }
 
-    if(p101_error_has_no_error(err))
+    p101_call_result_1 = p101_error_has_no_error(err);
+    if(p101_call_result_1)
     {
         args->command_argv = &argv[optind];
     }
+
+done:
+    return;
 }
 
 static void handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option, const char *option_argument, int option_character)
 {
+    int          p101_call_result_2;
     const char **destination;
 
     destination = NULL;
@@ -117,7 +144,8 @@ static void handle_option(const struct p101_env *env, struct p101_error *err, st
         {
             char msg[MSG_LEN];
 
-            if(p101_isprint(env, option_character))
+            p101_call_result_2 = p101_isprint(env, option_character);
+            if(p101_call_result_2)
             {
                 p101_snprintf(env, err, msg, sizeof(msg), "Unknown option '-%c'.", option_character);
             }
@@ -145,6 +173,15 @@ static void handle_option(const struct p101_env *env, struct p101_error *err, st
 
 void p101_error_path_walk_check_arguments(const struct p101_env *env, struct p101_error *err, const struct arguments *args)
 {
+    int  p101_expression_result_14;
+    int  p101_expression_result_15;
+    int  p101_call_result_16;
+    int  p101_call_result_17;
+    bool p101_call_result_3;
+    bool p101_call_result_4;
+    bool p101_call_result_5;
+    bool p101_call_result_6;
+    bool p101_call_result_7;
     P101_TRACE_SCOPE(env);
 
     if(args->command_argv == NULL || args->command_argv[0] == NULL)
@@ -159,25 +196,29 @@ void p101_error_path_walk_check_arguments(const struct p101_env *env, struct p10
         goto done;
     }
 
-    if(required_text_missing(args->p101_run))
+    p101_call_result_3 = required_text_missing(args->p101_run);
+    if(p101_call_result_3)
     {
         P101_ERROR_RAISE_USER(err, "The p101-run path must not be empty.", ERR_USAGE);
         goto done;
     }
 
-    if(required_text_missing(args->p101_observe))
+    p101_call_result_4 = required_text_missing(args->p101_observe);
+    if(p101_call_result_4)
     {
         P101_ERROR_RAISE_USER(err, "The p101-observe path must not be empty.", ERR_USAGE);
         goto done;
     }
 
-    if(required_text_missing(args->p101_analyze))
+    p101_call_result_5 = required_text_missing(args->p101_analyze);
+    if(p101_call_result_5)
     {
         P101_ERROR_RAISE_USER(err, "The p101-analyze path must not be empty.", ERR_USAGE);
         goto done;
     }
 
-    if(required_text_missing(args->event_model))
+    p101_call_result_6 = required_text_missing(args->event_model);
+    if(p101_call_result_6)
     {
         P101_ERROR_RAISE_USER(err, "The p101-event-model path must not be empty.", ERR_USAGE);
         goto done;
@@ -189,13 +230,39 @@ void p101_error_path_walk_check_arguments(const struct p101_env *env, struct p10
         goto done;
     }
 
-    if(!fault_mode_supported(env, args->fault_mode))
+    p101_call_result_7 = fault_mode_supported(env, args->fault_mode);
+    if(!p101_call_result_7)
     {
         P101_ERROR_RAISE_USER(err, "The fault mode must be error, eintr, timeout, short, or uncertain.", ERR_USAGE);
         goto done;
     }
 
-    if((p101_strcmp(env, args->fault_mode, "short") == 0 || p101_strcmp(env, args->fault_mode, "uncertain") == 0) && args->fault_name == NULL)
+    p101_call_result_16 = p101_strcmp(env, args->fault_mode, "short");
+    if(p101_call_result_16 == 0)
+    {
+        p101_expression_result_15 = 1;
+    }
+    else
+    {
+        p101_call_result_17 = p101_strcmp(env, args->fault_mode, "uncertain");
+        if(p101_call_result_17 == 0)
+        {
+            p101_expression_result_15 = 1;
+        }
+        else
+        {
+            p101_expression_result_15 = 0;
+        }
+    }
+    p101_expression_result_14 = 0;
+    if(p101_expression_result_15)
+    {
+        if(args->fault_name == NULL)
+        {
+            p101_expression_result_14 = 1;
+        }
+    }
+    if(p101_expression_result_14)
     {
         P101_ERROR_RAISE_USER(err, "Short and uncertain modes require an exact wrapper identity with -F.", ERR_USAGE);
         goto done;
@@ -212,7 +279,90 @@ static bool required_text_missing(const char *text)
 
 static bool fault_mode_supported(const struct p101_env *env, const char *mode)
 {
-    return (mode != NULL && (p101_strcmp(env, mode, "error") == 0 || p101_strcmp(env, mode, "eintr") == 0 || p101_strcmp(env, mode, "timeout") == 0 || p101_strcmp(env, mode, "short") == 0 || p101_strcmp(env, mode, "uncertain") == 0)) != 0;
+    int p101_expression_result_18;
+    int p101_expression_result_19;
+    int p101_expression_result_20;
+    int p101_expression_result_21;
+    int p101_expression_result_22;
+    int p101_call_result_23;
+    int p101_call_result_24;
+    int p101_call_result_25;
+    int p101_call_result_26;
+    int p101_call_result_27;
+    p101_expression_result_18 = 0;
+    if(mode != NULL)
+    {
+        p101_call_result_23 = p101_strcmp(env, mode, "error");
+        if(p101_call_result_23 == 0)
+        {
+            p101_expression_result_22 = 1;
+        }
+        else
+        {
+            p101_call_result_24 = p101_strcmp(env, mode, "eintr");
+            if(p101_call_result_24 == 0)
+            {
+                p101_expression_result_22 = 1;
+            }
+            else
+            {
+                p101_expression_result_22 = 0;
+            }
+        }
+        if(p101_expression_result_22)
+        {
+            p101_expression_result_21 = 1;
+        }
+        else
+        {
+            p101_call_result_25 = p101_strcmp(env, mode, "timeout");
+            if(p101_call_result_25 == 0)
+            {
+                p101_expression_result_21 = 1;
+            }
+            else
+            {
+                p101_expression_result_21 = 0;
+            }
+        }
+        if(p101_expression_result_21)
+        {
+            p101_expression_result_20 = 1;
+        }
+        else
+        {
+            p101_call_result_26 = p101_strcmp(env, mode, "short");
+            if(p101_call_result_26 == 0)
+            {
+                p101_expression_result_20 = 1;
+            }
+            else
+            {
+                p101_expression_result_20 = 0;
+            }
+        }
+        if(p101_expression_result_20)
+        {
+            p101_expression_result_19 = 1;
+        }
+        else
+        {
+            p101_call_result_27 = p101_strcmp(env, mode, "uncertain");
+            if(p101_call_result_27 == 0)
+            {
+                p101_expression_result_19 = 1;
+            }
+            else
+            {
+                p101_expression_result_19 = 0;
+            }
+        }
+        if(p101_expression_result_19)
+        {
+            p101_expression_result_18 = 1;
+        }
+    }
+    return p101_expression_result_18 != 0;
 }
 
 #ifdef P101_ERROR_PATH_WALK_TESTING
@@ -224,13 +374,18 @@ void p101_error_path_walk_test_handle_option(const struct p101_env *env, struct 
 
 void p101_error_path_walk_convert_arguments(const struct p101_env *env, struct p101_error *err, struct arguments *args)
 {
+    bool p101_call_result_8;
+    bool p101_call_result_9;
+    bool p101_call_result_10;
+    bool p101_call_result_11;
     P101_TRACE_SCOPE(env);
 
     if(args->max_failures_str != NULL)
     {
         args->max_failures = p101_parse_unsigned_int(env, err, args->max_failures_str, DEFAULT_MAX_FAILURES);
 
-        if(p101_error_has_error(err))
+        p101_call_result_8 = p101_error_has_error(err);
+        if(p101_call_result_8)
         {
             P101_ERROR_RAISE_USER(err, "The failure count must be an unsigned integer.", ERR_USAGE);
             goto done;
@@ -250,7 +405,8 @@ void p101_error_path_walk_convert_arguments(const struct p101_env *env, struct p
     {
         args->fault_errno = p101_parse_positive_int(env, err, args->fault_errno_str, EIO);
 
-        if(p101_error_has_error(err))
+        p101_call_result_9 = p101_error_has_error(err);
+        if(p101_call_result_9)
         {
             P101_ERROR_RAISE_USER(err, "The injected errno must be a positive integer.", ERR_USAGE);
             goto done;
@@ -259,8 +415,9 @@ void p101_error_path_walk_convert_arguments(const struct p101_env *env, struct p
 
     if(args->fault_amount_str != NULL)
     {
-        args->fault_amount = p101_parse_unsigned_int(env, err, args->fault_amount_str, 1U);
-        if(p101_error_has_error(err))
+        args->fault_amount  = p101_parse_unsigned_int(env, err, args->fault_amount_str, 1U);
+        p101_call_result_10 = p101_error_has_error(err);
+        if(p101_call_result_10)
         {
             P101_ERROR_RAISE_USER(err, "The short-I/O amount must be an unsigned integer.", ERR_USAGE);
             goto done;
@@ -271,8 +428,9 @@ void p101_error_path_walk_convert_arguments(const struct p101_env *env, struct p
     {
         int parsed_repeat;
 
-        parsed_repeat = p101_parse_positive_int(env, err, args->fault_repeat_str, 1);
-        if(p101_error_has_error(err))
+        parsed_repeat       = p101_parse_positive_int(env, err, args->fault_repeat_str, 1);
+        p101_call_result_11 = p101_error_has_error(err);
+        if(p101_call_result_11)
         {
             P101_ERROR_RAISE_USER(err, "The fault repeat count must be a positive integer.", ERR_USAGE);
             goto done;

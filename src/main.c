@@ -8,6 +8,15 @@
 
 int main(int argc, char *argv[])
 {
+    int                p101_expression_result_8;
+    bool               p101_call_result_9;
+    bool               p101_call_result_7;
+    bool               p101_call_result_1;
+    bool               p101_call_result_2;
+    bool               p101_call_result_3;
+    bool               p101_call_result_4;
+    const char        *p101_call_result_5;
+    const char        *p101_call_result_6;
     struct p101_error *err;
     struct p101_env   *env;
     struct arguments   args;
@@ -20,14 +29,24 @@ int main(int argc, char *argv[])
     p101_error_path_walk_arguments_init(env, &args);
     p101_error_path_walk_parse_arguments(env, err, argc, argv, &args);
 
-    if(args.show_help && p101_error_has_no_error(err))
+    p101_expression_result_8 = 0;
+    if(args.show_help)
+    {
+        p101_call_result_9 = p101_error_has_no_error(err);
+        if(p101_call_result_9)
+        {
+            p101_expression_result_8 = 1;
+        }
+    }
+    if(p101_expression_result_8)
     {
         p101_error_path_walk_usage(env, err, argv[0], EXIT_SUCCESS, NULL);
         ret_val = EXIT_SUCCESS;
         goto done;
     }
 
-    if(p101_error_has_error(err))
+    p101_call_result_1 = p101_error_has_error(err);
+    if(p101_call_result_1)
     {
         goto done;
     }
@@ -39,14 +58,16 @@ int main(int argc, char *argv[])
 
     p101_error_path_walk_check_arguments(env, err, &args);
 
-    if(p101_error_has_error(err))
+    p101_call_result_2 = p101_error_has_error(err);
+    if(p101_call_result_2)
     {
         goto done;
     }
 
     p101_error_path_walk_convert_arguments(env, err, &args);
 
-    if(p101_error_has_error(err))
+    p101_call_result_3 = p101_error_has_error(err);
+    if(p101_call_result_3)
     {
         goto done;
     }
@@ -54,18 +75,24 @@ int main(int argc, char *argv[])
     ret_val = p101_error_path_walk_run(env, err, &args);
 
 done:
-    if(p101_error_has_error(err))
+{
+    p101_call_result_7 = p101_error_has_error(err);
+    if(p101_call_result_7)
     {
-        if(p101_error_is_error(err, P101_ERROR_USER, ERR_USAGE))
+        p101_call_result_4 = p101_error_is_error(err, P101_ERROR_USER, ERR_USAGE);
+        if(p101_call_result_4)
         {
-            p101_error_path_walk_usage(env, err, argv[0], EXIT_TROUBLE, p101_error_get_message(err));
+            p101_call_result_5 = p101_error_get_message(err);
+            p101_error_path_walk_usage(env, err, argv[0], EXIT_TROUBLE, p101_call_result_5);
         }
         else
         {
-            p101_fprintf(env, err, stderr, "%s\n", p101_error_get_message(err));
+            p101_call_result_6 = p101_error_get_message(err);
+            p101_fprintf(env, err, stderr, "%s\n", p101_call_result_6);
         }
         ret_val = EXIT_TROUBLE;
     }
+}
 
     p101_env_destroy(env);
     p101_error_destroy(err);

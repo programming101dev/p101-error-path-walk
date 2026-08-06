@@ -666,7 +666,7 @@ static void test_run_observe_covers_argument_flush_fork_wait_and_child_failures(
     TEST_ASSERT_TRUE(p101_error_has_error(error));
     p101_error_reset(error);
 
-    fault.call_name = "fork";
+    fault.call_name = "p101_fork";
     fault.fail_at   = 1U;
     fault.matches   = 0U;
     (void)p101_error_path_walk_test_run_observe(env, error, &args, &result);
@@ -679,7 +679,7 @@ static void test_run_observe_covers_argument_flush_fork_wait_and_child_failures(
     TEST_ASSERT_FALSE(p101_error_has_error(error));
 
     args.p101_run   = "/usr/bin/true";
-    fault.call_name = "open";
+    fault.call_name = "p101_open";
     fault.fail_at   = 1U;
     fault.matches   = 0U;
     p101_env_set_fault_injector(env, inject_selected_failure, &fault);
@@ -692,7 +692,7 @@ static void test_run_observe_covers_argument_flush_fork_wait_and_child_failures(
     TEST_ASSERT_FALSE(p101_error_has_error(error));
 
     p101_env_set_fault_injector(env, NULL, NULL);
-    fault.call_name = "waitpid";
+    fault.call_name = "p101_waitpid";
     fault.fail_at   = 1U;
     fault.matches   = 0U;
     p101_env_set_fault_injector(env, inject_selected_failure, &fault);
@@ -744,7 +744,7 @@ static void test_run_one_case_and_run_cover_error_boundaries(void)
     p101_free(env, long_prefix);
 
     init_runner_arguments(&args, command);
-    fault.call_name = "unsetenv";
+    fault.call_name = "p101_unsetenv";
     fault.fail_at   = 1U;
     fault.matches   = 0U;
     p101_env_set_fault_injector(env, inject_selected_failure, &fault);
@@ -752,21 +752,21 @@ static void test_run_one_case_and_run_cover_error_boundaries(void)
     TEST_ASSERT_TRUE(p101_error_has_error(error));
     p101_error_reset(error);
 
-    fault.call_name = "setenv";
+    fault.call_name = "p101_setenv";
     fault.fail_at   = 1U;
     fault.matches   = 0U;
     TEST_ASSERT_EQUAL_INT(EXIT_TROUBLE, p101_error_path_walk_test_run_one_case(env, error, &args, 0U, &result));
     TEST_ASSERT_TRUE(p101_error_has_error(error));
     p101_error_reset(error);
 
-    fault.call_name = "unsetenv";
+    fault.call_name = "p101_unsetenv";
     fault.fail_at   = 18U;
     fault.matches   = 0U;
     TEST_ASSERT_EQUAL_INT(EXIT_TROUBLE, p101_error_path_walk_test_run_one_case(env, error, &args, 0U, &result));
     TEST_ASSERT_TRUE(p101_error_has_error(error));
     p101_error_reset(error);
 
-    fault.call_name   = "setenv";
+    fault.call_name   = "p101_setenv";
     fault.fail_at     = 5U;
     fault.matches     = 0U;
     args.max_failures = 1U;

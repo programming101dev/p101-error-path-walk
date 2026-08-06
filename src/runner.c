@@ -46,6 +46,20 @@ static void   reset_run_environment(const struct p101_env *env, struct p101_erro
 
 int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err, const struct arguments *args)
 {
+    int                p101_expression_result_12;
+    int                p101_expression_result_13;
+    bool               p101_call_result_14;
+    int                p101_expression_result_15;
+    bool               p101_call_result_16;
+    size_t             p101_call_result_17;
+    int                p101_expression_result_18;
+    bool               p101_call_result_19;
+    int                p101_expression_result_20;
+    bool               p101_call_result_21;
+    int                p101_call_result_1;
+    size_t             p101_call_result_2;
+    int                p101_call_result_3;
+    size_t             p101_call_result_4;
     struct run_result  result;
     unsigned int       index;
     size_t             runs;
@@ -53,6 +67,7 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
     struct fault_group groups[FAULT_GROUP_LIMIT];
     size_t             group_count;
     bool               trouble;
+    bool               no_error;
     int                status;
 
     P101_TRACE_SCOPE(env);
@@ -62,7 +77,8 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
     p101_memset(env, groups, 0, sizeof(groups));
     trouble = false;
 
-    if(run_one_case(env, err, args, 0, &result) != EXIT_SUCCESS)
+    p101_call_result_1 = run_one_case(env, err, args, 0, &result);
+    if(p101_call_result_1 != EXIT_SUCCESS)
     {
         trouble = true;
         goto done;
@@ -71,16 +87,64 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
     runs++;
     p101_error_path_walk_print_run_result(env, err, &result);
 
-    if((int)result.pipeline_ok == 0 || analysis_summary_unavailable(&result) || (!p101_error_path_walk_status_is_success(result.status) && analysis_finding_count(&result) == 0U))
+    if((int)result.pipeline_ok == 0)
+    {
+        p101_expression_result_13 = 1;
+    }
+    else
+    {
+        p101_call_result_14 = analysis_summary_unavailable(&result);
+        if(p101_call_result_14)
+        {
+            p101_expression_result_13 = 1;
+        }
+        else
+        {
+            p101_expression_result_13 = 0;
+        }
+    }
+    if(p101_expression_result_13)
+    {
+        p101_expression_result_12 = 1;
+    }
+    else
+    {
+        p101_call_result_16       = p101_error_path_walk_status_is_success(result.status);
+        p101_expression_result_15 = 0;
+        if(!p101_call_result_16)
+        {
+            p101_call_result_17 = analysis_finding_count(&result);
+            if(p101_call_result_17 == 0U)
+            {
+                p101_expression_result_15 = 1;
+            }
+        }
+        if(p101_expression_result_15)
+        {
+            p101_expression_result_12 = 1;
+        }
+        else
+        {
+            p101_expression_result_12 = 0;
+        }
+    }
+    if(p101_expression_result_12)
     {
         trouble = true;
     }
 
-    findings += analysis_finding_count(&result);
+    p101_call_result_2 = analysis_finding_count(&result);
+    findings += p101_call_result_2;
 
-    for(index = 1; index <= args->max_failures && p101_error_has_no_error(err); index++)
+    for(index = 1; index <= args->max_failures; index++)
     {
-        if(run_one_case(env, err, args, index, &result) != EXIT_SUCCESS)
+        no_error = p101_error_has_no_error(err);
+        if(!no_error)
+        {
+            break;
+        }
+        p101_call_result_3 = run_one_case(env, err, args, index, &result);
+        if(p101_call_result_3 != EXIT_SUCCESS)
         {
             trouble = true;
             goto done;
@@ -89,7 +153,23 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
         runs++;
         p101_error_path_walk_print_run_result(env, err, &result);
 
-        if((int)result.pipeline_ok == 0 || analysis_summary_unavailable(&result))
+        if((int)result.pipeline_ok == 0)
+        {
+            p101_expression_result_18 = 1;
+        }
+        else
+        {
+            p101_call_result_19 = analysis_summary_unavailable(&result);
+            if(p101_call_result_19)
+            {
+                p101_expression_result_18 = 1;
+            }
+            else
+            {
+                p101_expression_result_18 = 0;
+            }
+        }
+        if(p101_expression_result_18)
         {
             trouble = true;
         }
@@ -100,7 +180,8 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
             break;
         }
 
-        findings += analysis_finding_count(&result);
+        p101_call_result_4 = analysis_finding_count(&result);
+        findings += p101_call_result_4;
         update_fault_group(env, err, groups, &group_count, &result);
     }
 
@@ -110,7 +191,23 @@ int p101_error_path_walk_run(const struct p101_env *env, struct p101_error *err,
 done:
     reset_run_environment(env, err);
 
-    if(p101_error_has_error(err) || trouble)
+    p101_call_result_21 = p101_error_has_error(err);
+    if(p101_call_result_21)
+    {
+        p101_expression_result_20 = 1;
+    }
+    else
+    {
+        if(trouble)
+        {
+            p101_expression_result_20 = 1;
+        }
+        else
+        {
+            p101_expression_result_20 = 0;
+        }
+    }
+    if(p101_expression_result_20)
     {
         status = EXIT_TROUBLE;
     }
@@ -128,6 +225,7 @@ done:
 
 static void update_fault_group(const struct p101_env *env, struct p101_error *err, struct fault_group groups[FAULT_GROUP_LIMIT], size_t *group_count, const struct run_result *result)
 {
+    int         p101_call_result_5;
     const char *name;
     size_t      findings;
     size_t      index;
@@ -143,7 +241,8 @@ static void update_fault_group(const struct p101_env *env, struct p101_error *er
 
     for(size_t i = 0; i < *group_count; i++)
     {
-        if(p101_strcmp(env, groups[i].name, name) == 0)
+        p101_call_result_5 = p101_strcmp(env, groups[i].name, name);
+        if(p101_call_result_5 == 0)
         {
             index = i;
             break;
@@ -210,6 +309,14 @@ static bool analysis_summary_unavailable(const struct run_result *result)
 
 static int run_one_case(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result)
 {
+    int  p101_expression_result_22;
+    bool p101_call_result_23;
+    bool p101_call_result_6;
+    bool p101_call_result_7;
+    bool p101_call_result_8;
+    bool p101_call_result_9;
+    bool p101_call_result_10;
+    bool p101_call_result_11;
     char fault_value[FAULT_LEN];
     int  status;
 
@@ -218,14 +325,16 @@ static int run_one_case(const struct p101_env *env, struct p101_error *err, cons
     result->fault_index = fault_index;
     p101_error_path_walk_make_log_paths(env, err, args, fault_index, result);
 
-    if(p101_error_has_error(err))
+    p101_call_result_6 = p101_error_has_error(err);
+    if(p101_call_result_6)
     {
         goto done;
     }
 
     clear_fault_environment(env, err);
 
-    if(p101_error_has_error(err))
+    p101_call_result_7 = p101_error_has_error(err);
+    if(p101_call_result_7)
     {
         goto done;
     }
@@ -262,7 +371,8 @@ static int run_one_case(const struct p101_env *env, struct p101_error *err, cons
         p101_setenv(env, err, CHILD_FAULT_CALL_ENV, fault_value, 1);
     }
 
-    if(p101_error_has_error(err))
+    p101_call_result_8 = p101_error_has_error(err);
+    if(p101_call_result_8)
     {
         goto done;
     }
@@ -271,19 +381,30 @@ static int run_one_case(const struct p101_env *env, struct p101_error *err, cons
     result->pipeline_ok = pipeline_status_is_acceptable(result->status);
     result->fault_hit   = p101_error_path_walk_read_fault_hit(env, err, result->fault_log_path, result->fault_name);
 
-    if(p101_error_has_error(err))
+    p101_call_result_9 = p101_error_has_error(err);
+    if(p101_call_result_9)
     {
         goto done;
     }
 
     result->resource_log_present = p101_error_path_walk_file_exists(env, result->resource_log_path);
 
-    if(result->resource_log_present && p101_error_path_walk_file_exists(env, result->resource_json_path))
+    p101_expression_result_22 = 0;
+    if(result->resource_log_present)
+    {
+        p101_call_result_23 = p101_error_path_walk_file_exists(env, result->resource_json_path);
+        if(p101_call_result_23)
+        {
+            p101_expression_result_22 = 1;
+        }
+    }
+    if(p101_expression_result_22)
     {
         p101_error_path_walk_read_policy_json(env, err, result->resource_json_path, RESOURCE_POLICY_SCHEMA, &result->resources);
     }
 
-    if(p101_error_path_walk_file_exists(env, result->analysis_json_path))
+    p101_call_result_10 = p101_error_path_walk_file_exists(env, result->analysis_json_path);
+    if(p101_call_result_10)
     {
         p101_error_path_walk_read_policy_json(env, err, result->analysis_json_path, ANALYSIS_POLICY_SCHEMA, &result->analysis);
     }
@@ -291,7 +412,8 @@ static int run_one_case(const struct p101_env *env, struct p101_error *err, cons
 done:
     clear_fault_environment(env, err);
 
-    if(p101_error_has_error(err))
+    p101_call_result_11 = p101_error_has_error(err);
+    if(p101_call_result_11)
     {
         status = EXIT_TROUBLE;
     }

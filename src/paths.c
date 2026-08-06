@@ -44,12 +44,14 @@ static struct p101_error *create_predicate_error(void)
 
 void p101_error_path_walk_make_log_paths(const struct p101_env *env, struct p101_error *err, const struct arguments *args, unsigned int fault_index, struct run_result *result)
 {
+    pid_t       p101_call_result_1;
     const char *prefix;
     long        pid_value;
 
     P101_TRACE_SCOPE(env);
-    prefix    = (args->log_prefix == NULL) ? DEFAULT_LOG_PREFIX : args->log_prefix;
-    pid_value = (long)p101_getpid(env);
+    prefix             = (args->log_prefix == NULL) ? DEFAULT_LOG_PREFIX : args->log_prefix;
+    p101_call_result_1 = p101_getpid(env);
+    pid_value          = (long)p101_call_result_1;
 
     if(fault_index == 0)
     {
@@ -122,6 +124,12 @@ done:
 
 bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101_error *err, const char *path, char name[NAME_LEN])
 {
+    int                p101_expression_result_8;
+    const char        *p101_call_result_9;
+    char              *p101_call_result_2;
+    int                p101_call_result_3;
+    int                p101_call_result_4;
+    bool               p101_call_result_5;
     struct p101_error *predicate_err;
     FILE              *stream;
     char               line[READ_BUF_LEN];
@@ -159,12 +167,22 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
         const char *disposition;
         size_t      length;
 
-        if(p101_fgets(env, err, line, sizeof(line), stream) == NULL)
+        p101_call_result_2 = p101_fgets(env, err, line, sizeof(line), stream);
+        if(p101_call_result_2 == NULL)
         {
             break;
         }
-        length = p101_strlen(env, line);
-        if(length == sizeof(line) - 1U && p101_strchr(env, line, '\n') == NULL)
+        length                   = p101_strlen(env, line);
+        p101_expression_result_8 = 0;
+        if(length == sizeof(line) - 1U)
+        {
+            p101_call_result_9 = p101_strchr(env, line, '\n');
+            if(p101_call_result_9 == NULL)
+            {
+                p101_expression_result_8 = 1;
+            }
+        }
+        if(p101_expression_result_8)
         {
             P101_ERROR_RAISE_USER(err, "The fault log contains an over-long record.", ERR_USAGE);
             goto done;
@@ -173,7 +191,8 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
         cursor = line;
         field  = split_tab(&cursor);
 
-        if(p101_strcmp(env, field, "P101FAULT") != 0)
+        p101_call_result_3 = p101_strcmp(env, field, "P101FAULT");
+        if(p101_call_result_3 != 0)
         {
             continue;
         }
@@ -194,12 +213,14 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
             goto done;
         }
 
-        if(p101_strcmp(env, version, "3") != 0)
+        p101_call_result_4 = p101_strcmp(env, version, "3");
+        if(p101_call_result_4 != 0)
         {
             P101_ERROR_RAISE_USER(err, "The fault log version is not supported.", ERR_USAGE);
             goto done;
         }
-        if(!fault_semantics_valid(env, mode, phase, disposition))
+        p101_call_result_5 = fault_semantics_valid(env, mode, phase, disposition);
+        if(!p101_call_result_5)
         {
             P101_ERROR_RAISE_USER(err, "The fault log contains inconsistent phase/disposition semantics.", ERR_USAGE);
             goto done;
@@ -260,23 +281,107 @@ done:
 
 static bool fault_semantics_valid(const struct p101_env *env, const char *mode, const char *phase, const char *disposition)
 {
+    int  p101_expression_result_10;
+    int  p101_call_result_11;
+    int  p101_call_result_12;
+    int  p101_expression_result_13;
+    int  p101_call_result_14;
+    int  p101_call_result_15;
+    int  p101_expression_result_16;
+    int  p101_expression_result_17;
+    int  p101_call_result_18;
+    int  p101_call_result_19;
+    int  p101_call_result_20;
+    int  p101_expression_result_21;
+    int  p101_call_result_22;
+    int  p101_call_result_23;
+    int  p101_call_result_7;
+    int  p101_call_result_6;
     bool valid;
 
-    if(p101_strcmp(env, mode, "short") == 0)
+    p101_call_result_6 = p101_strcmp(env, mode, "short");
+    if(p101_call_result_6 == 0)
     {
-        valid = (p101_strcmp(env, phase, "after-partial-progress") == 0 && p101_strcmp(env, disposition, "progress-known") == 0) != 0;
-    }
-    else if(p101_strcmp(env, mode, "uncertain") == 0)
-    {
-        valid = (p101_strcmp(env, phase, "after-dispatch") == 0 && p101_strcmp(env, disposition, "outcome-uncertain") == 0) != 0;
-    }
-    else if(p101_strcmp(env, mode, "error") == 0 || p101_strcmp(env, mode, "eintr") == 0 || p101_strcmp(env, mode, "timeout") == 0)
-    {
-        valid = (p101_strcmp(env, phase, "before-call") == 0 && p101_strcmp(env, disposition, "retry-safe") == 0) != 0;
+        p101_call_result_11       = p101_strcmp(env, phase, "after-partial-progress");
+        p101_expression_result_10 = 0;
+        if(p101_call_result_11 == 0)
+        {
+            p101_call_result_12 = p101_strcmp(env, disposition, "progress-known");
+            if(p101_call_result_12 == 0)
+            {
+                p101_expression_result_10 = 1;
+            }
+        }
+        valid = p101_expression_result_10 != 0;
     }
     else
     {
-        valid = false;
+        p101_call_result_7  = p101_strcmp(env, mode, "uncertain");
+        p101_call_result_18 = p101_strcmp(env, mode, "error");
+        if(p101_call_result_18 == 0)
+        {
+            p101_expression_result_17 = 1;
+        }
+        else
+        {
+            p101_call_result_19 = p101_strcmp(env, mode, "eintr");
+            if(p101_call_result_19 == 0)
+            {
+                p101_expression_result_17 = 1;
+            }
+            else
+            {
+                p101_expression_result_17 = 0;
+            }
+        }
+        if(p101_expression_result_17)
+        {
+            p101_expression_result_16 = 1;
+        }
+        else
+        {
+            p101_call_result_20 = p101_strcmp(env, mode, "timeout");
+            if(p101_call_result_20 == 0)
+            {
+                p101_expression_result_16 = 1;
+            }
+            else
+            {
+                p101_expression_result_16 = 0;
+            }
+        }
+        if(p101_call_result_7 == 0)
+        {
+            p101_call_result_14       = p101_strcmp(env, phase, "after-dispatch");
+            p101_expression_result_13 = 0;
+            if(p101_call_result_14 == 0)
+            {
+                p101_call_result_15 = p101_strcmp(env, disposition, "outcome-uncertain");
+                if(p101_call_result_15 == 0)
+                {
+                    p101_expression_result_13 = 1;
+                }
+            }
+            valid = p101_expression_result_13 != 0;
+        }
+        else if(p101_expression_result_16)
+        {
+            p101_call_result_22       = p101_strcmp(env, phase, "before-call");
+            p101_expression_result_21 = 0;
+            if(p101_call_result_22 == 0)
+            {
+                p101_call_result_23 = p101_strcmp(env, disposition, "retry-safe");
+                if(p101_call_result_23 == 0)
+                {
+                    p101_expression_result_21 = 1;
+                }
+            }
+            valid = p101_expression_result_21 != 0;
+        }
+        else
+        {
+            valid = false;
+        }
     }
 
     return valid;
