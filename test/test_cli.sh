@@ -82,7 +82,7 @@ base=("$tool" -U "$work/fake-run" -O observe -Y analyze -B model -l "$work/walk"
 expect_status 0 "$tool" --help
 expect_status 0 "$tool" -h
 expect_status 0 env FAKE_SUMMARY_MODE=clean FAKE_FAULTS=1 "${base[@]}" -n 2 -- true
-expect_status 1 env FAKE_SUMMARY_MODE=findings FAKE_FAULTS=1 "${base[@]}" -n 1 -F open -- true
+expect_status 1 env FAKE_SUMMARY_MODE=findings FAKE_FAULTS=1 "${base[@]}" -n 1 -F p101_open -- true
 expect_status 1 env FAKE_SUMMARY_MODE=sync-findings FAKE_PIPELINE_STATUS=1 "${base[@]}" -n 0 -- true
 expect_status 1 env FAKE_SUMMARY_MODE=findings FAKE_PIPELINE_STATUS=1 "${base[@]}" -n 0 -- true
 expect_status 2 env FAKE_SUMMARY_MODE=incomplete "${base[@]}" -n 0 -- true
@@ -91,7 +91,7 @@ expect_status 2 env FAKE_SUMMARY_MODE=missing "${base[@]}" -n 0 -- true
 expect_status 2 env FAKE_SUMMARY_MODE=nojson "${base[@]}" -n 0 -- true
 expect_status 2 env FAKE_SUMMARY_MODE=clean FAKE_PIPELINE_STATUS=1 "${base[@]}" -n 0 -- true
 expect_status 2 env FAKE_SUMMARY_MODE=clean FAKE_PIPELINE_STATUS=2 FAKE_FAULTS=1 "${base[@]}" -n 1 -- true
-expect_status 0 env FAKE_SUMMARY_MODE=clean "${base[@]}" -v -n 0 -E 5 -F read -M short -A 2 -R 2 -- true
+expect_status 0 env FAKE_SUMMARY_MODE=clean "${base[@]}" -v -n 0 -E 5 -F p101_read -M short -A 2 -R 2 -- true
 
 expect_status 2 "$tool"
 expect_status 2 "$tool" -z
@@ -110,4 +110,4 @@ expect_status 2 "$tool" -B "" -- true
 expect_status 2 "$tool" -F "" -- true
 expect_status 2 "$tool" -M bogus -- true
 expect_status 2 "$tool" -M short -- true
-expect_status 2 env P101_FAULT_CALL=1 P101_FAULT_NAME=unsetenv P101_FAULT_ERRNO=5 "$tool" -- true
+expect_status 2 env P101_FAULT_CALL=1 P101_FAULT_NAME=p101_unsetenv P101_FAULT_ERRNO=5 "$tool" -- true

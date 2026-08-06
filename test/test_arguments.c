@@ -77,7 +77,7 @@ static int inject_selected_failure(const struct p101_env *unused_env, const char
 
 static void test_parse_accepts_command_after_options(void)
 {
-    char            *argv[] = {"p101-error-path-walk", "-n", "3", "-l", "walk", "-U", "p101-run.py", "-O", "p101-observe", "-Y", "p101-analyze.py", "-B", "p101-event-model", "-E", "12", "-F", "open", "--", "prog", "arg", NULL};
+    char            *argv[] = {"p101-error-path-walk", "-n", "3", "-l", "walk", "-U", "p101-run.py", "-O", "p101-observe", "-Y", "p101-analyze.py", "-B", "p101-event-model", "-E", "12", "-F", "p101_open", "--", "prog", "arg", NULL};
     struct arguments args;
 
     reset_getopt();
@@ -95,14 +95,14 @@ static void test_parse_accepts_command_after_options(void)
     TEST_ASSERT_EQUAL_STRING("p101-observe", args.p101_observe);
     TEST_ASSERT_EQUAL_STRING("p101-analyze.py", args.p101_analyze);
     TEST_ASSERT_EQUAL_STRING("p101-event-model", args.event_model);
-    TEST_ASSERT_EQUAL_STRING("open", args.fault_name);
+    TEST_ASSERT_EQUAL_STRING("p101_open", args.fault_name);
     TEST_ASSERT_EQUAL_STRING("prog", args.command_argv[0]);
     TEST_ASSERT_EQUAL_STRING("arg", args.command_argv[1]);
 }
 
 static void test_parse_accepts_short_io_and_repeat(void)
 {
-    char            *argv[] = {"p101-error-path-walk", "-F", "read", "-M", "short", "-A", "7", "-R", "3", "--", "prog", NULL};
+    char            *argv[] = {"p101-error-path-walk", "-F", "p101_read", "-M", "short", "-A", "7", "-R", "3", "--", "prog", NULL};
     struct arguments args;
 
     reset_getopt();
@@ -149,7 +149,7 @@ static void test_parse_rejects_missing_command(void)
 static void test_argument_validation_covers_null_empty_modes_and_short_names(void)
 {
     static const char *const modes[]       = {"error", "eintr", "timeout", "short", "uncertain"};
-    static const char *const short_names[] = {"read", "write", "pread", "pwrite"};
+    static const char *const short_names[] = {"p101_read", "p101_write", "p101_pread", "p101_pwrite"};
     char                    *command[]     = {"true", NULL};
     struct arguments         args;
 
@@ -233,7 +233,7 @@ static void test_argument_validation_covers_null_empty_modes_and_short_names(voi
         p101_error_path_walk_arguments_init(env, &args);
         args.command_argv = command;
         args.fault_mode   = modes[index];
-        args.fault_name   = (p101_strcmp(env, modes[index], "short") == 0 || p101_strcmp(env, modes[index], "uncertain") == 0) ? "read" : NULL;
+        args.fault_name   = (p101_strcmp(env, modes[index], "short") == 0 || p101_strcmp(env, modes[index], "uncertain") == 0) ? "p101_read" : NULL;
         p101_error_path_walk_check_arguments(env, error, &args);
         TEST_ASSERT_FALSE(p101_error_has_error(error));
     }

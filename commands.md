@@ -28,7 +28,7 @@ Program examples:
 | `p101-error-path-walk -- ./prog` | Run `./prog` normally, then walk fault injections until no fault fires |
 | `p101-error-path-walk -n 0 -- ./prog` | Baseline only |
 | `p101-error-path-walk -n 20 -l /tmp/run -- ./prog config.txt` | Run baseline plus fault calls up to 20 using `/tmp/run-*` capture/analysis directories |
-| `p101-error-path-walk -F open -- ./prog config.txt` | Walk only fault-capable calls named `open` |
+| `p101-error-path-walk -F p101_open -- ./prog config.txt` | Walk only the exact `p101_open` API identity |
 | `p101-error-path-walk -E 24 -- ./prog config.txt` | Inject errno `24` instead of the default `EIO` |
 | `p101-error-path-walk -O ../p101-observe/build-clang/p101-observe -- ./prog` | Use an in-tree p101-observe build |
 | `p101-error-path-walk -U ../../scripts/runtime/p101-run.py -Y ../../scripts/runtime/p101-analyze.py -- ./prog` | Use the in-tree shared runtime drivers |

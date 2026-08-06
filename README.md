@@ -50,8 +50,8 @@ Options:
 - `-B <p101-event-model>` chooses the causal model builder.
 - `-E <errno>` chooses the errno injected by failed wrappers. The default is
   `EIO`.
-- `-F <name>` counts and fails only a named p101 wrapper, such as `open`,
-  `read`, `malloc`, or `socket`.
+- `-F <name>` counts and fails only the exact public wrapper identity, such as
+  `p101_open`, `p101_read`, `p101_malloc`, or `p101_socket`.
 - `-M <mode>` selects `error`, `eintr`, `timeout`, `short`, or `uncertain`. `eintr` and
   `timeout` inject `EINTR` and `ETIMEDOUT`; `short` performs a real bounded
   `read`, `write`, `pread`, or `pwrite` and returns its partial result.
@@ -65,10 +65,10 @@ Example:
 
 ```sh
 p101 walk -- ./my-p101-program config.txt
-p101-error-path-walk -F open -E 24 -l /tmp/my-run -- ./my-p101-program config.txt
-p101-error-path-walk -F read -M eintr -R 3 -- ./my-p101-program input
-p101-error-path-walk -F write -M short -A 1 -- ./my-p101-program
-p101-error-path-walk -F write -M uncertain -- ./my-p101-program
+p101-error-path-walk -F p101_open -E 24 -l /tmp/my-run -- ./my-p101-program config.txt
+p101-error-path-walk -F p101_read -M eintr -R 3 -- ./my-p101-program input
+p101-error-path-walk -F p101_write -M short -A 1 -- ./my-p101-program
+p101-error-path-walk -F p101_write -M uncertain -- ./my-p101-program
 ```
 
 Exit status is `0` when every walked error path is clean under the shared

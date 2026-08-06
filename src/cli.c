@@ -12,7 +12,6 @@
 static void handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option, const char *option_argument, int option_character);
 static bool required_text_missing(const char *text);
 static bool fault_mode_supported(const struct p101_env *env, const char *mode);
-static bool io_outcome_name_supported(const struct p101_env *env, const char *name);
 
 void p101_error_path_walk_arguments_init(const struct p101_env *env, struct arguments *args)
 {
@@ -194,9 +193,9 @@ void p101_error_path_walk_check_arguments(const struct p101_env *env, struct p10
         goto done;
     }
 
-    if((p101_strcmp(env, args->fault_mode, "short") == 0 || p101_strcmp(env, args->fault_mode, "uncertain") == 0) && !io_outcome_name_supported(env, args->fault_name))
+    if((p101_strcmp(env, args->fault_mode, "short") == 0 || p101_strcmp(env, args->fault_mode, "uncertain") == 0) && args->fault_name == NULL)
     {
-        P101_ERROR_RAISE_USER(err, "Short and uncertain I/O modes require -F read, write, pread, or pwrite.", ERR_USAGE);
+        P101_ERROR_RAISE_USER(err, "Short and uncertain modes require an exact wrapper identity with -F.", ERR_USAGE);
         goto done;
     }
 
@@ -212,11 +211,6 @@ static bool required_text_missing(const char *text)
 static bool fault_mode_supported(const struct p101_env *env, const char *mode)
 {
     return (mode != NULL && (p101_strcmp(env, mode, "error") == 0 || p101_strcmp(env, mode, "eintr") == 0 || p101_strcmp(env, mode, "timeout") == 0 || p101_strcmp(env, mode, "short") == 0 || p101_strcmp(env, mode, "uncertain") == 0)) != 0;
-}
-
-static bool io_outcome_name_supported(const struct p101_env *env, const char *name)
-{
-    return (name != NULL && (p101_strcmp(env, name, "read") == 0 || p101_strcmp(env, name, "write") == 0 || p101_strcmp(env, name, "pread") == 0 || p101_strcmp(env, name, "pwrite") == 0)) != 0;
 }
 
 #ifdef P101_ERROR_PATH_WALK_TESTING
@@ -315,7 +309,7 @@ void p101_error_path_walk_usage(const struct p101_env *env, struct p101_error *e
     p101_fputs(env, err, "  -Y <p101-analyze>       Shared policy-analysis driver (default: PATH lookup)\n", stderr);
     p101_fputs(env, err, "  -B <p101-event-model>   Shared event-model builder (default: PATH lookup)\n", stderr);
     p101_fputs(env, err, "  -E <errno>              errno injected by failed wrappers (default: EIO)\n", stderr);
-    p101_fputs(env, err, "  -F <name>               Only count/fail matching wrapper names, e.g. open\n", stderr);
+    p101_fputs(env, err, "  -F <name>               Exact public wrapper identity, e.g. p101_open\n", stderr);
     p101_fputs(env, err, "  -M <mode>               error, eintr, timeout, short, or uncertain (default: error)\n", stderr);
     p101_fputs(env, err, "  -A <amount>             Maximum bytes for short read/write (default: 1)\n", stderr);
     p101_fputs(env, err, "  -R <count>              Inject at this and the next count-1 matching calls\n", stderr);
