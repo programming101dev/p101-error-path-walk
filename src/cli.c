@@ -83,7 +83,6 @@ done:
 
 static void handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option, const char *option_argument, int option_character)
 {
-    int          p101_call_result_2;
     const char **destination;
 
     destination = NULL;
@@ -142,6 +141,7 @@ static void handle_option(const struct p101_env *env, struct p101_error *err, st
         }
         case '?':
         {
+            int  p101_call_result_2;
             char msg[MSG_LEN];
 
             p101_call_result_2 = p101_isprint(env, option_character);
@@ -280,18 +280,16 @@ static bool required_text_missing(const char *text)
 static bool fault_mode_supported(const struct p101_env *env, const char *mode)
 {
     int p101_expression_result_18;
-    int p101_expression_result_19;
-    int p101_expression_result_20;
-    int p101_expression_result_21;
-    int p101_expression_result_22;
-    int p101_call_result_23;
-    int p101_call_result_24;
-    int p101_call_result_25;
-    int p101_call_result_26;
-    int p101_call_result_27;
+
     p101_expression_result_18 = 0;
     if(mode != NULL)
     {
+        int p101_expression_result_19;
+        int p101_expression_result_20;
+        int p101_expression_result_21;
+        int p101_expression_result_22;
+        int p101_call_result_23;
+
         p101_call_result_23 = p101_strcmp(env, mode, "error");
         if(p101_call_result_23 == 0)
         {
@@ -299,6 +297,8 @@ static bool fault_mode_supported(const struct p101_env *env, const char *mode)
         }
         else
         {
+            int p101_call_result_24;
+
             p101_call_result_24 = p101_strcmp(env, mode, "eintr");
             if(p101_call_result_24 == 0)
             {
@@ -315,6 +315,8 @@ static bool fault_mode_supported(const struct p101_env *env, const char *mode)
         }
         else
         {
+            int p101_call_result_25;
+
             p101_call_result_25 = p101_strcmp(env, mode, "timeout");
             if(p101_call_result_25 == 0)
             {
@@ -331,6 +333,8 @@ static bool fault_mode_supported(const struct p101_env *env, const char *mode)
         }
         else
         {
+            int p101_call_result_26;
+
             p101_call_result_26 = p101_strcmp(env, mode, "short");
             if(p101_call_result_26 == 0)
             {
@@ -347,6 +351,8 @@ static bool fault_mode_supported(const struct p101_env *env, const char *mode)
         }
         else
         {
+            int p101_call_result_27;
+
             p101_call_result_27 = p101_strcmp(env, mode, "uncertain");
             if(p101_call_result_27 == 0)
             {

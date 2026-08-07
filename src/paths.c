@@ -126,7 +126,7 @@ bool p101_error_path_walk_read_fault_hit(const struct p101_env *env, struct p101
 {
     int                p101_expression_result_8;
     const char        *p101_call_result_9;
-    char              *p101_call_result_2;
+    const char        *p101_call_result_2;
     int                p101_call_result_3;
     int                p101_call_result_4;
     bool               p101_call_result_5;
@@ -281,31 +281,21 @@ done:
 
 static bool fault_semantics_valid(const struct p101_env *env, const char *mode, const char *phase, const char *disposition)
 {
-    int  p101_expression_result_10;
-    int  p101_call_result_11;
-    int  p101_call_result_12;
-    int  p101_expression_result_13;
-    int  p101_call_result_14;
-    int  p101_call_result_15;
-    int  p101_expression_result_16;
-    int  p101_expression_result_17;
-    int  p101_call_result_18;
-    int  p101_call_result_19;
-    int  p101_call_result_20;
-    int  p101_expression_result_21;
-    int  p101_call_result_22;
-    int  p101_call_result_23;
-    int  p101_call_result_7;
     int  p101_call_result_6;
     bool valid;
 
     p101_call_result_6 = p101_strcmp(env, mode, "short");
     if(p101_call_result_6 == 0)
     {
+        int p101_expression_result_10;
+        int p101_call_result_11;
+
         p101_call_result_11       = p101_strcmp(env, phase, "after-partial-progress");
         p101_expression_result_10 = 0;
         if(p101_call_result_11 == 0)
         {
+            int p101_call_result_12;
+
             p101_call_result_12 = p101_strcmp(env, disposition, "progress-known");
             if(p101_call_result_12 == 0)
             {
@@ -316,6 +306,11 @@ static bool fault_semantics_valid(const struct p101_env *env, const char *mode, 
     }
     else
     {
+        int p101_expression_result_16;
+        int p101_expression_result_17;
+        int p101_call_result_18;
+        int p101_call_result_7;
+
         p101_call_result_7  = p101_strcmp(env, mode, "uncertain");
         p101_call_result_18 = p101_strcmp(env, mode, "error");
         if(p101_call_result_18 == 0)
@@ -324,6 +319,8 @@ static bool fault_semantics_valid(const struct p101_env *env, const char *mode, 
         }
         else
         {
+            int p101_call_result_19;
+
             p101_call_result_19 = p101_strcmp(env, mode, "eintr");
             if(p101_call_result_19 == 0)
             {
@@ -340,6 +337,8 @@ static bool fault_semantics_valid(const struct p101_env *env, const char *mode, 
         }
         else
         {
+            int p101_call_result_20;
+
             p101_call_result_20 = p101_strcmp(env, mode, "timeout");
             if(p101_call_result_20 == 0)
             {
@@ -352,10 +351,15 @@ static bool fault_semantics_valid(const struct p101_env *env, const char *mode, 
         }
         if(p101_call_result_7 == 0)
         {
+            int p101_expression_result_13;
+            int p101_call_result_14;
+
             p101_call_result_14       = p101_strcmp(env, phase, "after-dispatch");
             p101_expression_result_13 = 0;
             if(p101_call_result_14 == 0)
             {
+                int p101_call_result_15;
+
                 p101_call_result_15 = p101_strcmp(env, disposition, "outcome-uncertain");
                 if(p101_call_result_15 == 0)
                 {
@@ -366,10 +370,15 @@ static bool fault_semantics_valid(const struct p101_env *env, const char *mode, 
         }
         else if(p101_expression_result_16)
         {
+            int p101_expression_result_21;
+            int p101_call_result_22;
+
             p101_call_result_22       = p101_strcmp(env, phase, "before-call");
             p101_expression_result_21 = 0;
             if(p101_call_result_22 == 0)
             {
+                int p101_call_result_23;
+
                 p101_call_result_23 = p101_strcmp(env, disposition, "retry-safe");
                 if(p101_call_result_23 == 0)
                 {
