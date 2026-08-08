@@ -13,7 +13,6 @@
 
 static void handle_option(const struct p101_env *env, struct p101_error *err, struct arguments *args, int option, const char *option_argument, int option_character);
 static bool required_text_missing(const char *text);
-static bool fault_mode_supported(const struct p101_env *env, const char *mode);
 
 void p101_error_path_walk_arguments_init(const struct p101_env *env, struct arguments *args)
 {
@@ -173,15 +172,12 @@ static void handle_option(const struct p101_env *env, struct p101_error *err, st
 
 void p101_error_path_walk_check_arguments(const struct p101_env *env, struct p101_error *err, const struct arguments *args)
 {
-    int  p101_expression_result_14;
-    int  p101_expression_result_15;
-    int  p101_call_result_16;
-    int  p101_call_result_17;
-    bool p101_call_result_3;
-    bool p101_call_result_4;
-    bool p101_call_result_5;
-    bool p101_call_result_6;
-    bool p101_call_result_7;
+    p101_env_fault_mode mode;
+    bool                p101_call_result_7;
+    bool                p101_call_result_3;
+    bool                p101_call_result_4;
+    bool                p101_call_result_5;
+    bool                p101_call_result_6;
     P101_TRACE_SCOPE(env);
 
     if(args->command_argv == NULL || args->command_argv[0] == NULL)
@@ -230,39 +226,14 @@ void p101_error_path_walk_check_arguments(const struct p101_env *env, struct p10
         goto done;
     }
 
-    p101_call_result_7 = fault_mode_supported(env, args->fault_mode);
+    p101_call_result_7 = p101_env_fault_mode_from_name(args->fault_mode, &mode);
     if(!p101_call_result_7)
     {
         P101_ERROR_RAISE_USER(err, "The fault mode must be error, eintr, timeout, short, or uncertain.", ERR_USAGE);
         goto done;
     }
 
-    p101_call_result_16 = p101_strcmp(env, args->fault_mode, "short");
-    if(p101_call_result_16 == 0)
-    {
-        p101_expression_result_15 = 1;
-    }
-    else
-    {
-        p101_call_result_17 = p101_strcmp(env, args->fault_mode, "uncertain");
-        if(p101_call_result_17 == 0)
-        {
-            p101_expression_result_15 = 1;
-        }
-        else
-        {
-            p101_expression_result_15 = 0;
-        }
-    }
-    p101_expression_result_14 = 0;
-    if(p101_expression_result_15)
-    {
-        if(args->fault_name == NULL)
-        {
-            p101_expression_result_14 = 1;
-        }
-    }
-    if(p101_expression_result_14)
+    if((mode == P101_ENV_FAULT_MODE_SHORT || mode == P101_ENV_FAULT_MODE_UNCERTAIN) && args->fault_name == NULL)
     {
         P101_ERROR_RAISE_USER(err, "Short and uncertain modes require an exact wrapper identity with -F.", ERR_USAGE);
         goto done;
@@ -275,100 +246,6 @@ done:
 static bool required_text_missing(const char *text)
 {
     return (text == NULL || text[0] == '\0') != 0;
-}
-
-static bool fault_mode_supported(const struct p101_env *env, const char *mode)
-{
-    int p101_expression_result_18;
-
-    p101_expression_result_18 = 0;
-    if(mode != NULL)
-    {
-        int p101_expression_result_19;
-        int p101_expression_result_20;
-        int p101_expression_result_21;
-        int p101_expression_result_22;
-        int p101_call_result_23;
-
-        p101_call_result_23 = p101_strcmp(env, mode, "error");
-        if(p101_call_result_23 == 0)
-        {
-            p101_expression_result_22 = 1;
-        }
-        else
-        {
-            int p101_call_result_24;
-
-            p101_call_result_24 = p101_strcmp(env, mode, "eintr");
-            if(p101_call_result_24 == 0)
-            {
-                p101_expression_result_22 = 1;
-            }
-            else
-            {
-                p101_expression_result_22 = 0;
-            }
-        }
-        if(p101_expression_result_22)
-        {
-            p101_expression_result_21 = 1;
-        }
-        else
-        {
-            int p101_call_result_25;
-
-            p101_call_result_25 = p101_strcmp(env, mode, "timeout");
-            if(p101_call_result_25 == 0)
-            {
-                p101_expression_result_21 = 1;
-            }
-            else
-            {
-                p101_expression_result_21 = 0;
-            }
-        }
-        if(p101_expression_result_21)
-        {
-            p101_expression_result_20 = 1;
-        }
-        else
-        {
-            int p101_call_result_26;
-
-            p101_call_result_26 = p101_strcmp(env, mode, "short");
-            if(p101_call_result_26 == 0)
-            {
-                p101_expression_result_20 = 1;
-            }
-            else
-            {
-                p101_expression_result_20 = 0;
-            }
-        }
-        if(p101_expression_result_20)
-        {
-            p101_expression_result_19 = 1;
-        }
-        else
-        {
-            int p101_call_result_27;
-
-            p101_call_result_27 = p101_strcmp(env, mode, "uncertain");
-            if(p101_call_result_27 == 0)
-            {
-                p101_expression_result_19 = 1;
-            }
-            else
-            {
-                p101_expression_result_19 = 0;
-            }
-        }
-        if(p101_expression_result_19)
-        {
-            p101_expression_result_18 = 1;
-        }
-    }
-    return p101_expression_result_18 != 0;
 }
 
 #ifdef P101_ERROR_PATH_WALK_TESTING
